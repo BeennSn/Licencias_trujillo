@@ -1,7 +1,11 @@
-// Validación de RUC contra una API pública tipo SUNAT (ver .env.example:
-// SUNAT_API_URL y SUNAT_API_TOKEN). No es el convenio empresarial oficial de
-// SUNAT (eso requiere trámite formal con la municipalidad), pero sí consulta
-// datos reales: si el RUC existe, su razón social, y si está ACTIVO y HABIDO.
+// Validación de RUC contra la API de Decolecta (https://decolecta.com), que
+// consulta datos reales de SUNAT: si el RUC existe, su razón social, y si
+// está ACTIVO y HABIDO. No es el convenio empresarial oficial de SUNAT (eso
+// requiere trámite formal con la municipalidad), pero sirve para verificar
+// que el negocio sea real.
+//
+// Endpoint: GET {SUNAT_API_URL}?numero={ruc}  con  Authorization: Bearer {SUNAT_API_TOKEN}
+// Respuesta de ejemplo (campos que usamos): { razon_social, estado, condicion }
 //
 // Si el servicio externo falla o no responde (crítico el día de la demo),
 // se devuelve disponible=false y la pantalla del wizard permite continuar
@@ -29,23 +33,25 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
   const url = process.env.SUNAT_API_URL;
   const token = process.env.SUNAT_API_TOKEN;
 
-  if (!url) {
+  if (!url || !token) {
     return { disponible: false, motivo: "Servicio de validación de RUC no configurado." };
   }
 
   try {
-    const respuesta = await fetch(`${url}/${ruc}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    const respuesta = await fetch(`${url}?numero=${ruc}`, {
+      headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(8000),
     });
 
-    if (!respuesta.ok) {
-      return { disponible: false, motivo: "El servicio de SUNAT no respondió correctamente." };
-    }
-
     const datos = await respuesta.json();
 
-    const razonSocial: string | undefined = datos.razonSocial ?? datos.nombre;
+    if (!respuesta.ok) {
+      // Decolecta responde 422 con {message: "ruc no valido"} y 401 si el
+      // token es inválido/excedió su cuota, entre otros casos.
+      return { disponible: false, motivo: datos.message ?? datos.error ?? "El servicio de SUNAT no respondió correctamente." };
+    }
+
+    const razonSocial: string | undefined = datos.razon_social;
     const estado: string = (datos.estado ?? "").toString().toUpperCase();
     const condicion: string = (datos.condicion ?? "").toString().toUpperCase();
 
