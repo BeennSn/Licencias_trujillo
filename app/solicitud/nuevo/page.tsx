@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -26,6 +27,7 @@ export default function PasoRuc() {
   const [razonSocialManual, setRazonSocialManual] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tramiteBloqueado, setTramiteBloqueado] = useState<string | null>(null);
 
   async function consultar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -50,6 +52,7 @@ export default function PasoRuc() {
 
     setCargando(true);
     setError(null);
+    setTramiteBloqueado(null);
 
     const respuesta = await fetch("/api/solicitudes", {
       method: "POST",
@@ -66,6 +69,12 @@ export default function PasoRuc() {
     setCargando(false);
 
     if (!respuesta.ok) {
+      // Ya tiene una inspección programada (o más adelante): no hay nada
+      // que completar en el wizard, debe entrar con su cuenta.
+      if (datos.tramiteBloqueado) {
+        setTramiteBloqueado(datos.error);
+        return;
+      }
       setError(datos.error ?? "No se pudo crear la solicitud.");
       return;
     }
@@ -144,9 +153,18 @@ export default function PasoRuc() {
             </div>
           )}
 
+          {tramiteBloqueado && (
+            <div className="rounded-md border border-blue-300 bg-blue-50 p-4 space-y-3 text-sm">
+              <p className="text-blue-800">{tramiteBloqueado}</p>
+              <Link href="/login">
+                <Button className="w-full">Ingresar a mi cuenta</Button>
+              </Link>
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          {resultado && (
+          {resultado && !tramiteBloqueado && (
             <Button onClick={continuar} disabled={!puedeContinuar || cargando} className="w-full">
               {cargando ? "Creando expediente..." : "Continuar"}
             </Button>

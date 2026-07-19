@@ -94,9 +94,32 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (expedienteEnTramite) {
+    // Si ya se programó (o pagó) la inspección, no tiene sentido "volver a
+    // registrar" el mismo RUC en el wizard: ya no hay nada que completar
+    // ahí, el negocio debe entrar con su cuenta a ver el estado. Solo se
+    // permite retomar el wizard mientras sigue en pasos previos al pago.
+    const ESTADOS_QUE_BLOQUEAN_REINGRESO: typeof expedienteEnTramite.estado[] = [
+      "PAGO_APROBADO",
+      "PRIMERA_INSPECCION_PROGRAMADA",
+      "SEGUNDA_INSPECCION_PROGRAMADA",
+    ];
+
+    if (ESTADOS_QUE_BLOQUEAN_REINGRESO.includes(expedienteEnTramite.estado)) {
+      return NextResponse.json(
+        {
+          error:
+            "Este RUC ya tiene una solicitud en trámite con una inspección técnica programada. Ingresa con tu cuenta para ver el estado del expediente.",
+          tramiteBloqueado: true,
+          numeroExpediente: expedienteEnTramite.numeroExpediente,
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json({
       expedienteId: expedienteEnTramite.id,
       numeroExpediente: expedienteEnTramite.numeroExpediente,
+      estado: expedienteEnTramite.estado,
       reanudado: true,
     });
   }

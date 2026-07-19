@@ -34,10 +34,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     const { email, password } = analisis.data;
+    const emailNormalizado = email.toLowerCase().trim();
+
+    // El correo de la cuenta es único en todo el sistema (la tabla lo exige
+    // a nivel de base de datos); se verifica antes para dar un mensaje
+    // claro en vez de que la inserción falle con un error genérico.
+    const [correoEnUso] = await db.select().from(usuarios).where(eq(usuarios.email, emailNormalizado)).limit(1);
+    if (correoEnUso) {
+      return NextResponse.json(
+        { error: "Este correo ya está en uso por otra cuenta. Ingresa uno distinto o recupera tu contraseña si ya es tuyo." },
+        { status: 409 }
+      );
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     await db.insert(usuarios).values({
-      email: email.toLowerCase().trim(),
+      email: emailNormalizado,
       passwordHash,
       rol: "negocio",
       negocioId: expediente.negocioId,

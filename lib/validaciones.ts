@@ -4,6 +4,13 @@
 import { z } from "zod";
 import { DISTRITOS_TRUJILLO } from "./distritosTrujillo";
 import { esTipoPermitido, tieneDigitoVerificadorValido } from "./validacionRuc";
+import { esCorreoTemporal } from "./correoTemporal";
+
+// Correo válido en formato Y que no sea de un servicio desechable
+// (mailinator, guerrillamail, etc.), para dificultar el spam de bots.
+const correoNoTemporal = z
+  .email("Ingresa un correo válido.")
+  .refine((email) => !esCorreoTemporal(email), "No se aceptan correos temporales/desechables. Ingresa un correo real.");
 
 // Repite las validaciones de lib/validacionRuc.ts como defensa en
 // profundidad: la pantalla del wizard ya las corre antes de llamar a este
@@ -23,8 +30,13 @@ export const esquemaDomicilio = z.object({
   }),
   direccionLocal: z.string().min(5, "Ingresa la dirección completa del local."),
   giroActividad: z.string().min(3, "Indica el giro o actividad económica del negocio."),
-  emailContacto: z.email("Ingresa un correo de contacto válido."),
-  telefonoContacto: z.string().min(6, "Ingresa un teléfono de contacto válido."),
+  // Normalizados (minúsculas/recortados) para que la verificación de
+  // duplicados entre RUC distintos no falle por mayúsculas o espacios.
+  emailContacto: correoNoTemporal.transform((email) => email.toLowerCase().trim()),
+  telefonoContacto: z
+    .string()
+    .min(6, "Ingresa un teléfono de contacto válido.")
+    .transform((telefono) => telefono.trim()),
 });
 
 // Un documento solo es aceptable si su fecha de vigencia es futura y no
@@ -48,14 +60,14 @@ export const esquemaDocumento = z
   });
 
 export const esquemaCuenta = z.object({
-  email: z.email("Ingresa un correo válido."),
+  email: correoNoTemporal,
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
 });
 
 export const esquemaPago = z.object({
   medioPago: z.enum(["tarjeta", "yape", "pagoefectivo"]),
   tokenPago: z.string().min(1, "Falta el token de pago generado por la pasarela."),
-  email: z.email("Ingresa un correo válido para el comprobante de pago."),
+  email: correoNoTemporal,
 });
 
 export const esquemaDecisionInspeccion = z.object({

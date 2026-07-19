@@ -11,9 +11,25 @@ import { DISTRITOS_TRUJILLO, encontrarDistritoTrujillo } from "@/lib/distritosTr
 
 type DireccionSugerida = { distrito: string; direccion: string };
 
+// A qué paso del wizard mandar al negocio si vuelve a este paso después de
+// que el domicilio ya quedó fijo (ver bloqueo de edición más abajo).
+function siguientePasoDesdeEstado(estado: string): string {
+  if (estado === "BORRADOR") return "domicilio";
+  if (estado === "DOCUMENTOS_COMPLETOS") return "documentos";
+  return "pago";
+}
+
 export default function PasoDomicilio() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
   const router = useRouter();
+
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [domicilioBloqueado, setDomicilioBloqueado] = useState<{
+    distrito: string;
+    direccionLocal: string;
+    giroActividad: string;
+    siguientePaso: string;
+  } | null>(null);
 
   const [sugerencias, setSugerencias] = useState<DireccionSugerida[]>([]);
   const [direccionElegida, setDireccionElegida] = useState<number | "manual" | null>(null);
@@ -30,12 +46,27 @@ export default function PasoDomicilio() {
     fetch(`/api/solicitudes/${expedienteId}`)
       .then((r) => r.json())
       .then((datos) => {
+        // Una vez que el expediente avanzó más allá de BORRADOR, el
+        // distrito/dirección ya pueden estar ligados a documentos subidos
+        // o a una inspección programada: se muestran fijos, sin poder editarlos.
+        if (datos.expediente?.estado && datos.expediente.estado !== "BORRADOR") {
+          setDomicilioBloqueado({
+            distrito: datos.expediente.distrito ?? "",
+            direccionLocal: datos.expediente.direccionLocal ?? "",
+            giroActividad: datos.expediente.giroActividad ?? "",
+            siguientePaso: siguientePasoDesdeEstado(datos.expediente.estado),
+          });
+          setCargandoInicial(false);
+          return;
+        }
+
         const lista: DireccionSugerida[] = datos.negocio?.direccionesTrujillo ?? [];
         setSugerencias(lista);
         // Si no hay ninguna dirección registrada en SUNAT para este RUC en
         // Trujillo (ej. local nuevo aún no registrado como anexo), se salta
         // directo al formulario manual.
         if (lista.length === 0) setDireccionElegida("manual");
+        setCargandoInicial(false);
       });
   }, [expedienteId]);
 
@@ -74,6 +105,14 @@ export default function PasoDomicilio() {
     router.push(`/solicitud/${expedienteId}/documentos`);
   }
 
+  if (cargandoInicial) {
+    return (
+      <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
+        <p className="text-sm text-gray-500">Cargando...</p>
+      </main>
+    );
+  }
+
   return (
     <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
       <div className="w-full max-w-lg">
@@ -86,88 +125,113 @@ export default function PasoDomicilio() {
             </p>
           </div>
 
-          {sugerencias.length > 0 && direccionElegida === null && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-800">
-                SUNAT tiene estas direcciones registradas para tu RUC en Trujillo. Elige la que corresponde a
-                este local:
-              </p>
-              <div className="space-y-2">
-                {sugerencias.map((sugerencia, indice) => (
-                  <button
-                    key={indice}
-                    type="button"
-                    onClick={() => elegirSugerencia(indice)}
-                    className="w-full text-left border border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-md px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium">{sugerencia.distrito}</span> — {sugerencia.direccion}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={elegirManual}
-                  className="w-full text-left border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-md px-3 py-2 text-sm text-gray-600"
-                >
-                  Otra dirección (local nuevo, aún no registrado en SUNAT)
-                </button>
+          {domicilioBloqueado ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-1 text-sm">
+                <p className="text-xs text-gray-500 mb-2">
+                  Este paso ya quedó completado y no se puede modificar.
+                </p>
+                <p><span className="font-medium">Distrito:</span> {domicilioBloqueado.distrito}</p>
+                <p><span className="font-medium">Dirección:</span> {domicilioBloqueado.direccionLocal}</p>
+                <p><span className="font-medium">Giro:</span> {domicilioBloqueado.giroActividad}</p>
               </div>
+              <Button
+                onClick={() => router.push(`/solicitud/${expedienteId}/${domicilioBloqueado.siguientePaso}`)}
+                className="w-full"
+              >
+                Continuar
+              </Button>
             </div>
-          )}
-
-          {direccionElegida !== null && (
-            <form onSubmit={manejarEnvio} className="space-y-4">
-              {sugerencias.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDireccionElegida(null)}
-                  className="text-xs text-blue-700 hover:underline"
-                >
-                  ← Elegir otra dirección de la lista
-                </button>
+          ) : (
+            <>
+              {sugerencias.length > 0 && direccionElegida === null && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-800">
+                    SUNAT tiene estas direcciones registradas para tu RUC en Trujillo. Elige la que corresponde a
+                    este local:
+                  </p>
+                  <div className="space-y-2">
+                    {sugerencias.map((sugerencia, indice) => (
+                      <button
+                        key={indice}
+                        type="button"
+                        onClick={() => elegirSugerencia(indice)}
+                        className="w-full text-left border border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-md px-3 py-2 text-sm"
+                      >
+                        <span className="font-medium">{sugerencia.distrito}</span> — {sugerencia.direccion}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={elegirManual}
+                      className="w-full text-left border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-md px-3 py-2 text-sm text-gray-600"
+                    >
+                      Otra dirección (local nuevo, aún no registrado en SUNAT)
+                    </button>
+                  </div>
+                </div>
               )}
 
-              <Select label="Distrito" required value={distrito} onChange={(e) => setDistrito(e.target.value)}>
-                <option value="">Selecciona un distrito</option>
-                {DISTRITOS_TRUJILLO.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </Select>
+              {direccionElegida !== null && (
+                <form onSubmit={manejarEnvio} className="space-y-4">
+                  {sugerencias.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setDireccionElegida(null)}
+                      className="text-xs text-blue-700 hover:underline"
+                    >
+                      ← Elegir otra dirección de la lista
+                    </button>
+                  )}
 
-              <Input
-                label="Dirección del local"
-                required
-                value={direccionLocal}
-                onChange={(e) => setDireccionLocal(e.target.value)}
-              />
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                    El distrito y la dirección no se podrán modificar después de este paso.
+                  </p>
 
-              <Input
-                label="Giro / actividad económica"
-                required
-                value={giroActividad}
-                onChange={(e) => setGiroActividad(e.target.value)}
-              />
+                  <Select label="Distrito" required value={distrito} onChange={(e) => setDistrito(e.target.value)}>
+                    <option value="">Selecciona un distrito</option>
+                    {DISTRITOS_TRUJILLO.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </Select>
 
-              <Input
-                label="Correo de contacto"
-                type="email"
-                required
-                value={emailContacto}
-                onChange={(e) => setEmailContacto(e.target.value)}
-              />
+                  <Input
+                    label="Dirección del local"
+                    required
+                    value={direccionLocal}
+                    onChange={(e) => setDireccionLocal(e.target.value)}
+                  />
 
-              <Input
-                label="Teléfono de contacto"
-                required
-                value={telefonoContacto}
-                onChange={(e) => setTelefonoContacto(e.target.value)}
-              />
+                  <Input
+                    label="Giro / actividad económica"
+                    required
+                    value={giroActividad}
+                    onChange={(e) => setGiroActividad(e.target.value)}
+                  />
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+                  <Input
+                    label="Correo de contacto"
+                    type="email"
+                    required
+                    value={emailContacto}
+                    onChange={(e) => setEmailContacto(e.target.value)}
+                  />
 
-              <Button type="submit" disabled={cargando} className="w-full">
-                {cargando ? "Guardando..." : "Continuar"}
-              </Button>
-            </form>
+                  <Input
+                    label="Teléfono de contacto"
+                    required
+                    value={telefonoContacto}
+                    onChange={(e) => setTelefonoContacto(e.target.value)}
+                  />
+
+                  {error && <p className="text-sm text-red-600">{error}</p>}
+
+                  <Button type="submit" disabled={cargando} className="w-full">
+                    {cargando ? "Guardando..." : "Continuar"}
+                  </Button>
+                </form>
+              )}
+            </>
           )}
         </Card>
       </div>
