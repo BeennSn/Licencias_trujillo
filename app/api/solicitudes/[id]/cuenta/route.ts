@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!cuentaExistente) {
     const cuerpo = await request.json();
-    const analisis = esquemaCuenta.safeParse(cuerpo);
+    const analisis = await esquemaCuenta.safeParseAsync(cuerpo);
     if (!analisis.success) {
       return NextResponse.json({ error: analisis.error.issues[0].message }, { status: 400 });
     }

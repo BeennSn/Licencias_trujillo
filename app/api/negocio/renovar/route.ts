@@ -12,6 +12,7 @@ import { aFechaIso } from "@/lib/diasHabilesPeru";
 import { VIGENCIA_LICENCIA_ANIOS, MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { puedeTransicionarLicencia } from "@/lib/estadosLicencia";
 import { enviarCorreoDecisionInspeccion } from "@/lib/email";
+import { esquemaRenovacion } from "@/lib/validaciones";
 
 // Renovación anual: regla de negocio explícita del cliente -> es AUTOMÁTICA
 // con solo el pago, PERO únicamente si es el MISMO local. Por eso este
@@ -25,7 +26,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
 
-  const { mismoLocal, medioPago, tokenPago, email } = await request.json();
+  const cuerpo = await request.json();
+  const analisis = await esquemaRenovacion.safeParseAsync(cuerpo);
+  if (!analisis.success) {
+    return NextResponse.json({ error: analisis.error.issues[0].message }, { status: 400 });
+  }
+
+  const { mismoLocal, medioPago, tokenPago, email } = analisis.data;
 
   if (!mismoLocal) {
     return NextResponse.json(

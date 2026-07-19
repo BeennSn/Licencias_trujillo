@@ -8,14 +8,17 @@ import { esquemaDomicilio } from "@/lib/validaciones";
 // Trujillo), giro de negocio y datos de contacto. No cambia el estado del
 // expediente todavía: eso ocurre recién cuando los documentos quedan completos.
 //
-// Solo se puede editar mientras el expediente sigue en BORRADOR: una vez
-// que pasó a DOCUMENTOS_COMPLETOS (o más adelante), el distrito/dirección
-// ya pueden estar ligados a documentos subidos o a una inspección
-// programada, así que cambiarlos después invalidaría esos pasos.
+// El distrito/dirección solo se puede guardar UNA VEZ: apenas quedan
+// escritos en el expediente (distrito deja de ser null), cualquier intento
+// posterior de PATCH se rechaza. Importante: esto NO depende del estado
+// del expediente (que solo cambia al subir documentos), porque el negocio
+// podría volver atrás en el wizard antes de subir nada y editar el
+// domicilio que ya había guardado — el dato guardado es la fuente de
+// verdad de "¿ya se pasó este paso?", no la máquina de estados.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cuerpo = await request.json();
-  const analisis = esquemaDomicilio.safeParse(cuerpo);
+  const analisis = await esquemaDomicilio.safeParseAsync(cuerpo);
 
   if (!analisis.success) {
     return NextResponse.json({ error: analisis.error.issues[0].message }, { status: 400 });
@@ -26,7 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Expediente no encontrado." }, { status: 404 });
   }
 
-  if (expediente.estado !== "BORRADOR") {
+  if (expediente.distrito) {
     return NextResponse.json(
       { error: "El domicilio ya no se puede modificar: este paso quedó completado." },
       { status: 409 }

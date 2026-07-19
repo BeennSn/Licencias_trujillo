@@ -14,7 +14,7 @@ import { aFechaIso } from "@/lib/diasHabilesPeru";
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cuerpo = await request.json();
-  const analisis = esquemaPago.safeParse(cuerpo);
+  const analisis = await esquemaPago.safeParseAsync(cuerpo);
 
   if (!analisis.success) {
     return NextResponse.json({ error: analisis.error.issues[0].message }, { status: 400 });

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { usuarios } from "@/lib/db/schema";
-import { z } from "zod";
+import { esquemaNuevoInspector } from "@/lib/validaciones";
 
 async function exigirAdmin() {
   const sesion = await auth();
@@ -19,18 +19,12 @@ export async function GET() {
   return NextResponse.json({ inspectores });
 }
 
-const esquemaNuevoInspector = z.object({
-  email: z.email(),
-  password: z.string().min(8),
-  nombre: z.string().min(2),
-});
-
 export async function POST(request: Request) {
   const sesion = await exigirAdmin();
   if (!sesion) return NextResponse.json({ error: "No autorizado." }, { status: 403 });
 
   const cuerpo = await request.json();
-  const analisis = esquemaNuevoInspector.safeParse(cuerpo);
+  const analisis = await esquemaNuevoInspector.safeParseAsync(cuerpo);
   if (!analisis.success) {
     return NextResponse.json({ error: analisis.error.issues[0].message }, { status: 400 });
   }

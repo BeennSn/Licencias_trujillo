@@ -4,13 +4,30 @@
 import { z } from "zod";
 import { DISTRITOS_TRUJILLO } from "./distritosTrujillo";
 import { esTipoPermitido, tieneDigitoVerificadorValido } from "./validacionRuc";
-import { esCorreoTemporal } from "./correoTemporal";
+import { esCorreoTemporal, tieneServidorDeCorreo } from "./correoTemporal";
 
-// Correo válido en formato Y que no sea de un servicio desechable
-// (mailinator, guerrillamail, etc.), para dificultar el spam de bots.
+// Correo válido en formato, que no sea de un servicio desechable conocido
+// (mailinator, guerrillamail, etc.) y cuyo dominio realmente pueda recibir
+// correo (tiene registros MX) — esto último atrapa dominios "trampa" tan
+// nuevos que ninguna lista pública los tiene todavía. Al tener una
+// validación async (la consulta MX), hay que parsear estos esquemas con
+// `safeParseAsync`/`parseAsync`, nunca con la versión síncrona.
 const correoNoTemporal = z
   .email("Ingresa un correo válido.")
-  .refine((email) => !esCorreoTemporal(email), "No se aceptan correos temporales/desechables. Ingresa un correo real.");
+  .refine((email) => !esCorreoTemporal(email), "No se aceptan correos temporales/desechables. Ingresa un correo real.")
+  .refine(tieneServidorDeCorreo, "Este dominio de correo no existe o no puede recibir correos. Ingresa un correo real.");
+
+// Celular peruano: 9 dígitos que empiezan con 9, con o sin el prefijo
+// internacional +51 (también acepta espacios/guiones, que se limpian antes
+// de validar). Se guarda siempre normalizado a solo los 9 dígitos.
+export const telefonoPeru = z
+  .string()
+  .transform((telefono) => telefono.replace(/[\s\-()]/g, ""))
+  .refine(
+    (telefono) => /^(?:\+?51)?9\d{8}$/.test(telefono),
+    "Ingresa un celular peruano válido: 9 dígitos, empieza con 9 (puedes incluir +51)."
+  )
+  .transform((telefono) => telefono.replace(/^\+?51/, ""));
 
 // Repite las validaciones de lib/validacionRuc.ts como defensa en
 // profundidad: la pantalla del wizard ya las corre antes de llamar a este
@@ -31,12 +48,10 @@ export const esquemaDomicilio = z.object({
   direccionLocal: z.string().min(5, "Ingresa la dirección completa del local."),
   giroActividad: z.string().min(3, "Indica el giro o actividad económica del negocio."),
   // Normalizados (minúsculas/recortados) para que la verificación de
-  // duplicados entre RUC distintos no falle por mayúsculas o espacios.
+  // duplicados entre RUC distintos no falle por mayúsculas, espacios o el
+  // prefijo +51 puesto de forma distinta.
   emailContacto: correoNoTemporal.transform((email) => email.toLowerCase().trim()),
-  telefonoContacto: z
-    .string()
-    .min(6, "Ingresa un teléfono de contacto válido.")
-    .transform((telefono) => telefono.trim()),
+  telefonoContacto: telefonoPeru,
 });
 
 // Un documento solo es aceptable si su fecha de vigencia es futura y no
@@ -68,6 +83,21 @@ export const esquemaPago = z.object({
   medioPago: z.enum(["tarjeta", "yape", "pagoefectivo"]),
   tokenPago: z.string().min(1, "Falta el token de pago generado por la pasarela."),
   email: correoNoTemporal,
+});
+
+// Antes esta ruta no validaba nada (tomaba el body tal cual); ahora exige
+// las mismas reglas de correo que el resto del wizard.
+export const esquemaRenovacion = z.object({
+  mismoLocal: z.boolean(),
+  medioPago: z.enum(["tarjeta", "yape", "pagoefectivo"]),
+  tokenPago: z.string().min(1, "Falta el token de pago generado por la pasarela."),
+  email: correoNoTemporal,
+});
+
+export const esquemaNuevoInspector = z.object({
+  email: correoNoTemporal,
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+  nombre: z.string().min(2, "Ingresa el nombre del inspector."),
 });
 
 export const esquemaDecisionInspeccion = z.object({

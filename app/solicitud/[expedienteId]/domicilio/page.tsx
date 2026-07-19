@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { DISTRITOS_TRUJILLO, encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
+import { GIROS_ACTIVIDAD, GIRO_OTRO } from "@/lib/girosActividad";
 
 type DireccionSugerida = { distrito: string; direccion: string };
 
@@ -36,7 +37,8 @@ export default function PasoDomicilio() {
 
   const [distrito, setDistrito] = useState("");
   const [direccionLocal, setDireccionLocal] = useState("");
-  const [giroActividad, setGiroActividad] = useState("");
+  const [giroSeleccionado, setGiroSeleccionado] = useState("");
+  const [giroOtro, setGiroOtro] = useState("");
   const [emailContacto, setEmailContacto] = useState("");
   const [telefonoContacto, setTelefonoContacto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,10 +48,12 @@ export default function PasoDomicilio() {
     fetch(`/api/solicitudes/${expedienteId}`)
       .then((r) => r.json())
       .then((datos) => {
-        // Una vez que el expediente avanzó más allá de BORRADOR, el
-        // distrito/dirección ya pueden estar ligados a documentos subidos
-        // o a una inspección programada: se muestran fijos, sin poder editarlos.
-        if (datos.expediente?.estado && datos.expediente.estado !== "BORRADOR") {
+        // El domicilio solo se guarda UNA VEZ: apenas el expediente ya
+        // tiene distrito guardado, se muestra fijo (sin importar en qué
+        // estado esté el expediente — el negocio podría volver atrás en
+        // el wizard antes de subir documentos y aun así no debe poder
+        // editar lo que ya guardó).
+        if (datos.expediente?.distrito) {
           setDomicilioBloqueado({
             distrito: datos.expediente.distrito ?? "",
             direccionLocal: datos.expediente.direccionLocal ?? "",
@@ -86,6 +90,13 @@ export default function PasoDomicilio() {
   async function manejarEnvio(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
+
+    const giroActividad = giroSeleccionado === GIRO_OTRO ? giroOtro.trim() : giroSeleccionado;
+    if (!giroActividad) {
+      setError("Indica el giro o actividad económica del negocio.");
+      return;
+    }
+
     setCargando(true);
 
     const respuesta = await fetch(`/api/solicitudes/${expedienteId}/domicilio`, {
@@ -202,12 +213,27 @@ export default function PasoDomicilio() {
                     onChange={(e) => setDireccionLocal(e.target.value)}
                   />
 
-                  <Input
+                  <Select
                     label="Giro / actividad económica"
                     required
-                    value={giroActividad}
-                    onChange={(e) => setGiroActividad(e.target.value)}
-                  />
+                    value={giroSeleccionado}
+                    onChange={(e) => setGiroSeleccionado(e.target.value)}
+                  >
+                    <option value="">Selecciona un giro</option>
+                    {GIROS_ACTIVIDAD.map((giro) => (
+                      <option key={giro} value={giro}>{giro}</option>
+                    ))}
+                    <option value={GIRO_OTRO}>Otro (especificar)</option>
+                  </Select>
+
+                  {giroSeleccionado === GIRO_OTRO && (
+                    <Input
+                      label="Especifica el giro"
+                      required
+                      value={giroOtro}
+                      onChange={(e) => setGiroOtro(e.target.value)}
+                    />
+                  )}
 
                   <Input
                     label="Correo de contacto"
@@ -218,7 +244,8 @@ export default function PasoDomicilio() {
                   />
 
                   <Input
-                    label="Teléfono de contacto"
+                    label="Teléfono de contacto (Perú, +51)"
+                    placeholder="987654321"
                     required
                     value={telefonoContacto}
                     onChange={(e) => setTelefonoContacto(e.target.value)}
