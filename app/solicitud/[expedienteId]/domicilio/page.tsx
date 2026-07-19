@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { DISTRITOS_TRUJILLO, encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
 import { GIROS_ACTIVIDAD, GIRO_OTRO } from "@/lib/girosActividad";
-import { pasoActualDelWizard } from "@/lib/wizardPasos";
+import { pasoPorDefecto } from "@/lib/wizardPasos";
 
 type DireccionSugerida = { distrito: string; direccion: string };
 
@@ -51,7 +51,7 @@ export default function PasoDomicilio() {
             distrito: datos.expediente.distrito ?? "",
             direccionLocal: datos.expediente.direccionLocal ?? "",
             giroActividad: datos.expediente.giroActividad ?? "",
-            siguientePaso: pasoActualDelWizard(datos.expediente),
+            siguientePaso: pasoPorDefecto(datos.expediente),
           });
           setCargandoInicial(false);
           return;

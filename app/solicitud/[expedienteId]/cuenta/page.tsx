@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
-import { pasoActualDelWizard } from "@/lib/wizardPasos";
+import { pasoPorDefecto, puedeVerCuenta } from "@/lib/wizardPasos";
 
 export default function PasoCuenta() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
@@ -23,9 +23,8 @@ export default function PasoCuenta() {
       .then((r) => r.json())
       .then((datos) => {
         // No dejar crear la cuenta (paso E) sin haber pagado antes (paso D).
-        const paso = pasoActualDelWizard(datos.expediente);
-        if (paso !== "cuenta") {
-          router.replace(`/solicitud/${expedienteId}/${paso}`);
+        if (!puedeVerCuenta(datos.expediente)) {
+          router.replace(`/solicitud/${expedienteId}/${pasoPorDefecto(datos.expediente)}`);
           return;
         }
         setVerificandoAcceso(false);

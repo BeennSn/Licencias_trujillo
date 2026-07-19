@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { expedientes, pagos } from "@/lib/db/schema";
 import { esquemaPago } from "@/lib/validaciones";
-import { puedeTransicionar } from "@/lib/estadosExpediente";
+import { ESTADOS_QUE_PERMITEN_PAGAR, puedeTransicionar } from "@/lib/estadosExpediente";
 import { cobrarDerechoDeTramite } from "@/lib/pagos/mercadopago";
 import { programarPrimeraInspeccion } from "@/lib/agenda";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
@@ -25,8 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Expediente no encontrado." }, { status: 404 });
   }
 
-  const estadosQuePermitenPagar: typeof expediente.estado[] = ["DOCUMENTOS_COMPLETOS", "PAGO_PENDIENTE"];
-  if (!estadosQuePermitenPagar.includes(expediente.estado)) {
+  if (!ESTADOS_QUE_PERMITEN_PAGAR.includes(expediente.estado)) {
     return NextResponse.json(
       { error: "Este expediente no está listo para recibir el pago todavía." },
       { status: 409 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
-import { pasoActualDelWizard } from "@/lib/wizardPasos";
+import { pasoPorDefecto, puedeVerDocumentos } from "@/lib/wizardPasos";
 
 type Documento = {
   id: string;
@@ -38,10 +38,9 @@ export default function PasoDocumentos() {
       .then((r) => r.json())
       .then((datos) => {
         // Evita saltar a este paso sin haber fijado el domicilio, o volver a
-        // él cuando el trámite ya avanzó al pago.
-        const paso = pasoActualDelWizard(datos.expediente);
-        if (paso !== "documentos") {
-          router.replace(`/solicitud/${expedienteId}/${paso}`);
+        // él cuando el trámite ya avanzó más allá del pago.
+        if (!puedeVerDocumentos(datos.expediente)) {
+          router.replace(`/solicitud/${expedienteId}/${pasoPorDefecto(datos.expediente)}`);
           return;
         }
         setVerificandoAcceso(false);

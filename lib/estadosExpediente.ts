@@ -39,6 +39,13 @@ export const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: EstadoExpediente[] = ["BORR
 // E sin haber pagado).
 export const ESTADOS_SIN_PAGO_APROBADO: EstadoExpediente[] = ["BORRADOR", "DOCUMENTOS_COMPLETOS", "PAGO_PENDIENTE"];
 
+// Estados en los que se puede pagar el derecho de trámite (paso D). Ojo:
+// DOCUMENTOS_COMPLETOS también está en ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS
+// — mientras el pago no arranca, tanto el paso de documentos como el de pago
+// son accesibles al mismo tiempo (el negocio puede volver a corregir un
+// documento antes de pagar).
+export const ESTADOS_QUE_PERMITEN_PAGAR: EstadoExpediente[] = ["DOCUMENTOS_COMPLETOS", "PAGO_PENDIENTE"];
+
 export const ETIQUETAS_ESTADO_EXPEDIENTE: Record<EstadoExpediente, string> = {
   BORRADOR: "Borrador",
   DOCUMENTOS_COMPLETOS: "Documentos completos",

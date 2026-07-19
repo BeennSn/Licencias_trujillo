@@ -1,18 +1,40 @@
-import type { EstadoExpediente } from "./estadosExpediente";
+import {
+  ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS,
+  ESTADOS_QUE_PERMITEN_PAGAR,
+  ESTADOS_SIN_PAGO_APROBADO,
+  type EstadoExpediente,
+} from "./estadosExpediente";
 
 type ExpedienteResumen = {
   distrito: string | null;
   estado: EstadoExpediente;
 };
 
-// Dado el estado guardado del expediente, determina a qué paso del wizard
-// corresponde estar ahora mismo. Cada página del wizard llama a esto al
-// montar y redirige si no coincide con su propio paso, para que el negocio
-// no pueda saltar pasos por URL directa (avanzar) ni volver a rehacer un
-// paso ya completado (retroceder).
-export function pasoActualDelWizard(expediente: ExpedienteResumen): string {
+// OJO: DOCUMENTOS_COMPLETOS habilita a la vez el paso "documentos" (el
+// negocio puede corregir un documento antes de pagar) y el paso "pago". Por
+// eso cada página del wizard valida su propio acceso con estas funciones en
+// vez de compararse contra un único "paso actual" — un solo valor no puede
+// representar que dos páginas sean válidas al mismo tiempo.
+
+export function puedeVerDocumentos(expediente: ExpedienteResumen): boolean {
+  return Boolean(expediente.distrito) && ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS.includes(expediente.estado);
+}
+
+export function puedeVerPago(expediente: ExpedienteResumen): boolean {
+  return Boolean(expediente.distrito) && ESTADOS_QUE_PERMITEN_PAGAR.includes(expediente.estado);
+}
+
+export function puedeVerCuenta(expediente: ExpedienteResumen): boolean {
+  return Boolean(expediente.distrito) && !ESTADOS_SIN_PAGO_APROBADO.includes(expediente.estado);
+}
+
+// Paso al que mandar al negocio cuando la página que pidió no le corresponde
+// todavía (avanzar sin terminar el paso anterior) o ya quedó atrás
+// (retroceder a un paso ya completado). Se usa solo como destino de
+// redirección, no como fuente de verdad de "qué página es válida ahora".
+export function pasoPorDefecto(expediente: ExpedienteResumen): string {
   if (!expediente.distrito) return "domicilio";
-  if (expediente.estado === "BORRADOR" || expediente.estado === "DOCUMENTOS_COMPLETOS") return "documentos";
-  if (expediente.estado === "PAGO_PENDIENTE") return "pago";
+  if (puedeVerDocumentos(expediente)) return "documentos";
+  if (puedeVerPago(expediente)) return "pago";
   return "cuenta";
 }

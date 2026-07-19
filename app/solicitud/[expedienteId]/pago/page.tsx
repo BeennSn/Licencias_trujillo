@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
-import { pasoActualDelWizard } from "@/lib/wizardPasos";
+import { pasoPorDefecto, puedeVerPago } from "@/lib/wizardPasos";
 
 // NOTA PARA EL EQUIPO: cuando tengan su cuenta de Mercado Pago
 // (NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY configurada), reemplacen
@@ -45,9 +45,8 @@ export default function PasoPago() {
       .then((datos) => {
         // Evita pagar sin documentos completos, o volver a pagar cuando el
         // trámite ya pasó a la etapa de creación de cuenta.
-        const paso = pasoActualDelWizard(datos.expediente);
-        if (paso !== "pago") {
-          router.replace(`/solicitud/${expedienteId}/${paso}`);
+        if (!puedeVerPago(datos.expediente)) {
+          router.replace(`/solicitud/${expedienteId}/${pasoPorDefecto(datos.expediente)}`);
           return;
         }
         setVerificandoAcceso(false);
