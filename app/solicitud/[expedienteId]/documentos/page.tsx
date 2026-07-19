@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
+import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
 
 type Documento = {
   id: string;
@@ -44,6 +45,16 @@ export default function PasoDocumentos() {
 
     if (!archivo) {
       setError("Selecciona un archivo para subir.");
+      return;
+    }
+
+    if (!TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS.includes(archivo.type as (typeof TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS)[number])) {
+      setError("Solo se aceptan archivos PDF, JPG o PNG.");
+      return;
+    }
+
+    if (archivo.size > TAMANO_MAXIMO_DOCUMENTO_BYTES) {
+      setError(`El archivo supera el tamaño máximo permitido (${TAMANO_MAXIMO_DOCUMENTO_BYTES / (1024 * 1024)} MB).`);
       return;
     }
 
@@ -111,8 +122,9 @@ export default function PasoDocumentos() {
             </label>
 
             <Input
-              label="Archivo"
+              label="Archivo (PDF, JPG o PNG, máx. 10 MB)"
               type="file"
+              accept="application/pdf,image/jpeg,image/png"
               required
               onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
             />

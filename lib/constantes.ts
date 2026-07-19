@@ -11,3 +11,13 @@ export const VIGENCIA_LICENCIA_ANIOS = 1;
 // los inspectores activos). Mantiene simple la agenda para el MVP: no hay
 // horarios por inspector, solo un cupo diario global.
 export const CUPO_INSPECCIONES_POR_DIA = 4;
+
+// Documentos del expediente (ej. plano del local): solo PDF/imagen, y con
+// un tamaño máximo para no llenar el almacenamiento con archivos basura.
+export const TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+] as const;
+
+export const TAMANO_MAXIMO_DOCUMENTO_BYTES = 10 * 1024 * 1024; // 10 MB

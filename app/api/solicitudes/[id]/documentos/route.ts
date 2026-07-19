@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { documentos, expedientes } from "@/lib/db/schema";
 import { esquemaDocumento } from "@/lib/validaciones";
 import { puedeTransicionar } from "@/lib/estadosExpediente";
+import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
 
 // Paso C del wizard: sube un documento (ej. plano del local) a Vercel Blob
 // y lo registra en la base de datos. Requisito legal explícito del cliente:
@@ -23,6 +24,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!(archivo instanceof File) || archivo.size === 0) {
     return NextResponse.json({ error: "Debes adjuntar un archivo." }, { status: 400 });
+  }
+
+  if (!TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS.includes(archivo.type as (typeof TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS)[number])) {
+    return NextResponse.json(
+      { error: "Solo se aceptan archivos PDF, JPG o PNG." },
+      { status: 400 }
+    );
+  }
+
+  if (archivo.size > TAMANO_MAXIMO_DOCUMENTO_BYTES) {
+    return NextResponse.json(
+      { error: `El archivo supera el tamaño máximo permitido (${TAMANO_MAXIMO_DOCUMENTO_BYTES / (1024 * 1024)} MB).` },
+      { status: 400 }
+    );
   }
 
   const blob = await put(`documentos/${id}/${Date.now()}-${archivo.name}`, archivo, {
