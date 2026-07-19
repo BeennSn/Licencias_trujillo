@@ -29,6 +29,7 @@ export default function PasoDocumentos() {
   const [archivo, setArchivo] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/solicitudes/${expedienteId}/documentos`)
@@ -41,6 +42,16 @@ export default function PasoDocumentos() {
   async function subirDocumento(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
+
+    if (!nombre.trim()) {
+      setError("Ingresa el nombre del documento.");
+      return;
+    }
+
+    if (!fechaVigencia) {
+      setError("Selecciona la fecha de vigencia del documento.");
+      return;
+    }
 
     if (!archivo) {
       setError("Selecciona un archivo para subir.");
@@ -61,7 +72,7 @@ export default function PasoDocumentos() {
 
     const formulario = new FormData();
     formulario.append("tipo", tipo);
-    formulario.append("nombre", nombre || archivo.name);
+    formulario.append("nombre", nombre.trim());
     formulario.append("fechaVigencia", fechaVigencia);
     formulario.append("archivo", archivo);
 
@@ -84,6 +95,24 @@ export default function PasoDocumentos() {
     setArchivo(null);
   }
 
+  async function eliminarDocumento(documentoId: string) {
+    setError(null);
+    setEliminandoId(documentoId);
+
+    const respuesta = await fetch(`/api/solicitudes/${expedienteId}/documentos/${documentoId}`, {
+      method: "DELETE",
+    });
+    const datos = await respuesta.json();
+    setEliminandoId(null);
+
+    if (!respuesta.ok) {
+      setError(datos.error ?? "No se pudo eliminar el documento.");
+      return;
+    }
+
+    setDocumentos((actuales) => actuales.filter((doc) => doc.id !== documentoId));
+  }
+
   return (
     <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
       <div className="w-full max-w-lg">
@@ -103,7 +132,12 @@ export default function PasoDocumentos() {
               <option value="otro">Otro documento</option>
             </Select>
 
-            <Input label="Nombre del documento" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <Input
+              label="Nombre del documento"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+            />
 
             <Input
               label="Fecha de vigencia"
@@ -137,7 +171,17 @@ export default function PasoDocumentos() {
                   <span>
                     {doc.tipo === "plano_local" ? "Plano del local" : doc.nombre} · vigente hasta {doc.fechaVigencia}
                   </span>
-                  <span className="text-green-700 text-xs font-semibold">Vigente</span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-green-700 text-xs font-semibold">Vigente</span>
+                    <button
+                      type="button"
+                      onClick={() => eliminarDocumento(doc.id)}
+                      disabled={eliminandoId === doc.id}
+                      className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {eliminandoId === doc.id ? "Eliminando..." : "Eliminar"}
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>

@@ -97,6 +97,11 @@ export default function PasoDomicilio() {
       return;
     }
 
+    if (!/^9\d{8}$/.test(telefonoContacto)) {
+      setError("Ingresa un celular peruano válido: 9 dígitos, empieza con 9.");
+      return;
+    }
+
     setCargando(true);
 
     const respuesta = await fetch(`/api/solicitudes/${expedienteId}/domicilio`, {
@@ -255,9 +260,11 @@ export default function PasoDomicilio() {
                   <Input
                     label="Teléfono de contacto (Perú, +51)"
                     placeholder="987654321"
+                    inputMode="numeric"
+                    maxLength={9}
                     required
                     value={telefonoContacto}
-                    onChange={(e) => setTelefonoContacto(e.target.value)}
+                    onChange={(e) => setTelefonoContacto(e.target.value.replace(/\D/g, "").slice(0, 9))}
                   />
 
                   {error && <p className="text-sm text-red-600">{error}</p>}
