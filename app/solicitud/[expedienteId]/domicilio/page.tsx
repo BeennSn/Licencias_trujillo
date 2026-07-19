@@ -199,7 +199,14 @@ export default function PasoDomicilio() {
                     El distrito y la dirección no se podrán modificar después de este paso.
                   </p>
 
-                  <Select label="Distrito" required value={distrito} onChange={(e) => setDistrito(e.target.value)}>
+                  <Select
+                    label="Distrito"
+                    required
+                    value={distrito}
+                    onChange={(e) => setDistrito(e.target.value)}
+                    disabled={direccionElegida !== "manual"}
+                    className={direccionElegida !== "manual" ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""}
+                  >
                     <option value="">Selecciona un distrito</option>
                     {DISTRITOS_TRUJILLO.map((d) => (
                       <option key={d} value={d}>{d}</option>
@@ -211,6 +218,8 @@ export default function PasoDomicilio() {
                     required
                     value={direccionLocal}
                     onChange={(e) => setDireccionLocal(e.target.value)}
+                    readOnly={direccionElegida !== "manual"}
+                    className={direccionElegida !== "manual" ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""}
                   />
 
                   <Select
