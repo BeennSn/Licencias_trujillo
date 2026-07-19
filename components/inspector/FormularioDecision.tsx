@@ -62,7 +62,7 @@ export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedient
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-gray-800">Observaciones (obligatorio si no está conforme)</span>
         <textarea
-          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows={3}
           value={observaciones}
           onChange={(e) => setObservaciones(e.target.value)}

@@ -12,12 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Esta app está diseñada solo en modo claro (tarjetas y fondos blancos en
+   todas partes): NO seguir el prefers-color-scheme del sistema, porque
+   dejaría el texto claro (#ededed) sobre fondos blancos e ilegible, como en
+   los campos de formulario. */
 
 body {
   background: var(--background);
