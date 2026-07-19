@@ -3,15 +3,20 @@
 // dejar un correo real. Se usa en todos los formularios públicos que piden
 // correo (domicilio, cuenta, pago, renovación) para evitar solicitudes falsas.
 //
-// La lista (disposable-email-domains, ~120 mil dominios mantenidos por la
-// comunidad) nunca cubre el 100% -dominios "trampa" nuevos aparecen todo el
-// tiempo-, por eso se complementa con la verificación de registros MX de
-// tieneServidorDeCorreo() más abajo. Se carga una sola vez como Set para
-// que la búsqueda sea O(1).
+// La lista pública (disposable-email-domains, ~120 mil dominios) nunca
+// cubre el 100%: aparecen dominios "trampa" nuevos todo el tiempo, y ni
+// siquiera el repositorio que la mantiene los tiene apenas salen. Por eso
+// se combina con DOMINIOS_TEMPORALES_MANUAL (lib/dominiosTemporalesManual.ts),
+// una lista propia para ir agregando a mano los que se detecten en uso
+// real. Se carga todo una sola vez como Set para que la búsqueda sea O(1).
 import dominiosDesechables from "disposable-email-domains";
 import { resolveMx } from "node:dns/promises";
+import { DOMINIOS_TEMPORALES_MANUAL } from "./dominiosTemporalesManual";
 
-const DOMINIOS_DESECHABLES = new Set(dominiosDesechables.map((dominio) => dominio.toLowerCase()));
+const DOMINIOS_DESECHABLES = new Set([
+  ...dominiosDesechables.map((dominio) => dominio.toLowerCase()),
+  ...DOMINIOS_TEMPORALES_MANUAL.map((dominio) => dominio.toLowerCase()),
+]);
 
 export function esCorreoTemporal(email: string): boolean {
   const dominio = email.split("@")[1]?.toLowerCase().trim();
@@ -28,11 +33,12 @@ function conTimeout<T>(promesa: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-// Ninguna lista estática cubre los dominios "trampa" recién registrados
-// específicamente para spamear formularios (ej. dominios de un solo uso
-// que ni siquiera están en las listas públicas todavía). Como defensa
-// adicional, se verifica que el dominio tenga registros MX reales, es
-// decir, que de verdad pueda recibir correo.
+// Verifica que el dominio del correo exista y pueda recibir correo (tiene
+// registros MX). Esto atrapa correos con dominios inventados o mal
+// tipeados, pero OJO: NO atrapa servicios de correo temporal reales, ya
+// que estos sí configuran MX de verdad (necesitan recibir el correo para
+// mostrarlo en su bandeja temporal). Para esos casos, la defensa es la
+// lista + DOMINIOS_TEMPORALES_MANUAL de arriba, no esta verificación.
 //
 // Si la consulta DNS falla por timeout u otro error de red (no porque el
 // dominio no exista), se deja pasar el correo: preferimos no bloquear

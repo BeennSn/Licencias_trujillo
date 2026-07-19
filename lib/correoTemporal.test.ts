@@ -20,6 +20,14 @@ describe("esCorreoTemporal", () => {
   it("no lanza error con un correo mal formado", () => {
     expect(esCorreoTemporal("no-es-un-correo")).toBe(false);
   });
+
+  it("detecta dominios agregados a mano (DOMINIOS_TEMPORALES_MANUAL) que aún no están en la lista pública", () => {
+    // diarshop.com se reportó en uso real contra el sistema; a la fecha no
+    // aparece en disposable-email-domains ni tiene MX ausente (los
+    // servicios de correo temporal sí configuran MX real), así que la
+    // única forma de bloquearlo es esta lista manual.
+    expect(esCorreoTemporal("rebox53377@diarshop.com")).toBe(true);
+  });
 });
 
 // La consulta MX real depende de la red, así que se simula node:dns/promises
@@ -48,7 +56,7 @@ describe("tieneServidorDeCorreo", () => {
     vi.mocked(dns.resolveMx).mockRejectedValue(error);
 
     const { tieneServidorDeCorreo } = await import("./correoTemporal");
-    expect(await tieneServidorDeCorreo("alguien@diarshop.com")).toBe(false);
+    expect(await tieneServidorDeCorreo("alguien@dominio-que-no-existe-xyz.com")).toBe(false);
   });
 
   it("deja pasar el correo si la consulta DNS falla por una razón distinta (no bloquea por una falla de red)", async () => {
