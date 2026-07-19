@@ -9,7 +9,14 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { inspecciones, usuarios } from "./db/schema";
 import { proximoDiaHabil, aFechaIso, fechaIsoAFecha, sumarDiasHabiles } from "./diasHabilesPeru";
-import { CUPO_INSPECCIONES_POR_DIA, DIAS_HABILES_SEGUNDA_INSPECCION } from "./constantes";
+import { CUPO_INSPECCIONES_POR_DIA, DIAS_HABILES_SEGUNDA_INSPECCION, HORAS_INSPECCION } from "./constantes";
+
+// Asigna una hora según la posición en la cola de ese día hábil (0 = primera
+// hora del día). Se repite cíclicamente si la cola supera la cantidad de
+// horas disponibles (puede pasar en la segunda inspección, que no respeta cupo).
+function horaSegunPosicion(posicionEnElDia: number): string {
+  return HORAS_INSPECCION[posicionEnElDia % HORAS_INSPECCION.length];
+}
 
 const MAXIMO_DIAS_A_INTENTAR = 365;
 
@@ -64,6 +71,7 @@ export async function programarPrimeraInspeccion(expedienteId: string, fechaMini
           expedienteId,
           tipo: "primera",
           fechaProgramada: fechaCandidata,
+          horaProgramada: horaSegunPosicion(cantidadDeInspeccionesEseDia),
           inspectorId: inspectorElegidoId,
           estado: "programada",
         })
@@ -86,7 +94,10 @@ export async function programarPrimeraInspeccion(expedienteId: string, fechaMini
 export async function programarSegundaInspeccion(expedienteId: string, fechaPrimeraInspeccionIso: string) {
   const inspectoresActivos = await obtenerInspectoresActivos();
   const fechaExacta = sumarDiasHabiles(fechaPrimeraInspeccionIso, DIAS_HABILES_SEGUNDA_INSPECCION);
-  const { inspectorElegidoId } = await elegirInspectorMenosCargado(fechaExacta, inspectoresActivos);
+  const { inspectorElegidoId, cantidadDeInspeccionesEseDia } = await elegirInspectorMenosCargado(
+    fechaExacta,
+    inspectoresActivos
+  );
 
   const [inspeccionCreada] = await db
     .insert(inspecciones)
@@ -94,6 +105,7 @@ export async function programarSegundaInspeccion(expedienteId: string, fechaPrim
       expedienteId,
       tipo: "segunda",
       fechaProgramada: fechaExacta,
+      horaProgramada: horaSegunPosicion(cantidadDeInspeccionesEseDia),
       inspectorId: inspectorElegidoId,
       estado: "programada",
     })

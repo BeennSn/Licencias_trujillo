@@ -29,6 +29,16 @@ export function puedeTransicionar(actual: EstadoExpediente, siguiente: EstadoExp
   return TRANSICIONES_VALIDAS[actual].includes(siguiente);
 }
 
+// Estados en los que todavía se pueden subir/eliminar documentos (paso C).
+// Una vez que el pago arrancó (PAGO_PENDIENTE en adelante) los documentos ya
+// no se tocan por esta vía.
+export const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: EstadoExpediente[] = ["BORRADOR", "DOCUMENTOS_COMPLETOS"];
+
+// Estados en los que el pago (paso D) todavía no quedó aprobado. Se usa para
+// impedir que se salten pasos por URL directa (ej. crear la cuenta del paso
+// E sin haber pagado).
+export const ESTADOS_SIN_PAGO_APROBADO: EstadoExpediente[] = ["BORRADOR", "DOCUMENTOS_COMPLETOS", "PAGO_PENDIENTE"];
+
 export const ETIQUETAS_ESTADO_EXPEDIENTE: Record<EstadoExpediente, string> = {
   BORRADOR: "Borrador",
   DOCUMENTOS_COMPLETOS: "Documentos completos",

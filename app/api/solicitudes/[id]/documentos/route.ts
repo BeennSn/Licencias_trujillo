@@ -4,7 +4,7 @@ import { put } from "@vercel/blob";
 import { db } from "@/lib/db/client";
 import { documentos, expedientes } from "@/lib/db/schema";
 import { esquemaDocumento } from "@/lib/validaciones";
-import { puedeTransicionar } from "@/lib/estadosExpediente";
+import { ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS, puedeTransicionar } from "@/lib/estadosExpediente";
 import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
 
 // Paso C del wizard: sube un documento (ej. plano del local) a Vercel Blob
@@ -17,6 +17,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const [expediente] = await db.select().from(expedientes).where(eq(expedientes.id, id)).limit(1);
   if (!expediente) {
     return NextResponse.json({ error: "Expediente no encontrado." }, { status: 404 });
+  }
+
+  if (!ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS.includes(expediente.estado)) {
+    return NextResponse.json(
+      { error: "Ya no se pueden subir documentos a este expediente (el trámite avanzó a pago)." },
+      { status: 409 }
+    );
   }
 
   const formulario = await request.formData();

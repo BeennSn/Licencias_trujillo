@@ -3,14 +3,11 @@ import { and, eq } from "drizzle-orm";
 import { del } from "@vercel/blob";
 import { db } from "@/lib/db/client";
 import { documentos, expedientes } from "@/lib/db/schema";
+import { ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS } from "@/lib/estadosExpediente";
 
 // Permite borrar un documento subido por error (ej. archivo equivocado) antes
 // de que el expediente pase a pago. Una vez que el pago está en curso o
 // aprobado, el negocio ya no puede tocar los documentos del expediente.
-const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: (typeof expedientes.$inferSelect)["estado"][] = [
-  "BORRADOR",
-  "DOCUMENTOS_COMPLETOS",
-];
 
 export async function DELETE(
   _request: Request,

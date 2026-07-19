@@ -9,16 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { DISTRITOS_TRUJILLO, encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
 import { GIROS_ACTIVIDAD, GIRO_OTRO } from "@/lib/girosActividad";
+import { pasoActualDelWizard } from "@/lib/wizardPasos";
 
 type DireccionSugerida = { distrito: string; direccion: string };
-
-// A qué paso del wizard mandar al negocio si vuelve a este paso después de
-// que el domicilio ya quedó fijo (ver bloqueo de edición más abajo).
-function siguientePasoDesdeEstado(estado: string): string {
-  if (estado === "BORRADOR") return "domicilio";
-  if (estado === "DOCUMENTOS_COMPLETOS") return "documentos";
-  return "pago";
-}
 
 export default function PasoDomicilio() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
@@ -58,7 +51,7 @@ export default function PasoDomicilio() {
             distrito: datos.expediente.distrito ?? "",
             direccionLocal: datos.expediente.direccionLocal ?? "",
             giroActividad: datos.expediente.giroActividad ?? "",
-            siguientePaso: siguientePasoDesdeEstado(datos.expediente.estado),
+            siguientePaso: pasoActualDelWizard(datos.expediente),
           });
           setCargandoInicial(false);
           return;
@@ -200,17 +193,12 @@ export default function PasoDomicilio() {
                     </button>
                   )}
 
-                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-                    El distrito y la dirección no se podrán modificar después de este paso.
-                  </p>
-
                   <Select
                     label="Distrito"
                     required
                     value={distrito}
                     onChange={(e) => setDistrito(e.target.value)}
                     disabled={direccionElegida !== "manual"}
-                    className={direccionElegida !== "manual" ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""}
                   >
                     <option value="">Selecciona un distrito</option>
                     {DISTRITOS_TRUJILLO.map((d) => (
@@ -224,7 +212,6 @@ export default function PasoDomicilio() {
                     value={direccionLocal}
                     onChange={(e) => setDireccionLocal(e.target.value)}
                     readOnly={direccionElegida !== "manual"}
-                    className={direccionElegida !== "manual" ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""}
                   />
 
                   <Select

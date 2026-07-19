@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
+import { pasoActualDelWizard } from "@/lib/wizardPasos";
 
 type Documento = {
   id: string;
@@ -30,14 +31,36 @@ export default function PasoDocumentos() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+  const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   useEffect(() => {
+    fetch(`/api/solicitudes/${expedienteId}`)
+      .then((r) => r.json())
+      .then((datos) => {
+        // Evita saltar a este paso sin haber fijado el domicilio, o volver a
+        // él cuando el trámite ya avanzó al pago.
+        const paso = pasoActualDelWizard(datos.expediente);
+        if (paso !== "documentos") {
+          router.replace(`/solicitud/${expedienteId}/${paso}`);
+          return;
+        }
+        setVerificandoAcceso(false);
+      });
+
     fetch(`/api/solicitudes/${expedienteId}/documentos`)
       .then((r) => r.json())
       .then((datos) => setDocumentos(datos.documentos ?? []));
-  }, [expedienteId]);
+  }, [expedienteId, router]);
 
   const tienePlanoValido = documentos.some((d) => d.tipo === "plano_local" && !d.enTramite);
+
+  if (verificandoAcceso) {
+    return (
+      <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
+        <p className="text-sm text-gray-500">Cargando...</p>
+      </main>
+    );
+  }
 
   async function subirDocumento(evento: React.FormEvent) {
     evento.preventDefault();

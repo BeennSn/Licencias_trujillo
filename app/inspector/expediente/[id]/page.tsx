@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
@@ -41,6 +42,10 @@ export default async function DetalleExpedienteInspector({
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10 space-y-6">
+      <Link href="/inspector" className="text-sm text-blue-700 hover:underline">
+        ← Volver a mis inspecciones
+      </Link>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{negocio?.razonSocial}</h1>

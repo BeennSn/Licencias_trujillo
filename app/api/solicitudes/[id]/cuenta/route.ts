@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { expedientes, usuarios, inspecciones } from "@/lib/db/schema";
 import { esquemaCuenta } from "@/lib/validaciones";
+import { ESTADOS_SIN_PAGO_APROBADO } from "@/lib/estadosExpediente";
 import { enviarCorreoInspeccionProgramada } from "@/lib/email";
 
 // Paso E del wizard: crea la cuenta (correo + contraseña) que el negocio
@@ -16,6 +17,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const [expediente] = await db.select().from(expedientes).where(eq(expedientes.id, id)).limit(1);
   if (!expediente) {
     return NextResponse.json({ error: "Expediente no encontrado." }, { status: 404 });
+  }
+
+  if (ESTADOS_SIN_PAGO_APROBADO.includes(expediente.estado)) {
+    return NextResponse.json(
+      { error: "Debes completar el pago del trámite antes de crear tu cuenta." },
+      { status: 409 }
+    );
   }
 
   const [cuentaExistente] = await db

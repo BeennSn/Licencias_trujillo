@@ -17,7 +17,7 @@ export default async function PaginaInspector() {
     .innerJoin(expedientes, eq(inspecciones.expedienteId, expedientes.id))
     .innerJoin(negocios, eq(expedientes.negocioId, negocios.id))
     .where(and(eq(inspecciones.inspectorId, sesion!.user.id), eq(inspecciones.estado, "programada")))
-    .orderBy(asc(inspecciones.fechaProgramada));
+    .orderBy(asc(inspecciones.fechaProgramada), asc(inspecciones.horaProgramada));
 
   const porFecha = new Map<string, typeof filas>();
   for (const fila of filas) {
@@ -46,7 +46,9 @@ export default async function PaginaInspector() {
             {inspeccionesDelDia.map(({ inspeccion, expediente, negocio }) => (
               <li key={inspeccion.id} className="py-3 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{negocio.razonSocial}</p>
+                  <p className="font-medium text-gray-900">
+                    {inspeccion.horaProgramada ?? "Hora sin especificar"} · {negocio.razonSocial}
+                  </p>
                   <p className="text-xs text-gray-500">
                     Expediente {expediente.numeroExpediente} · {expediente.distrito}
                   </p>

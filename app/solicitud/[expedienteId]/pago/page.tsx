@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
+import { pasoActualDelWizard } from "@/lib/wizardPasos";
 
 // NOTA PARA EL EQUIPO: cuando tengan su cuenta de Mercado Pago
 // (NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY configurada), reemplacen
@@ -34,8 +35,24 @@ export default function PasoPago() {
   const [simularRechazo, setSimularRechazo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const mercadoPagoConfigurado = Boolean(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY);
+
+  useEffect(() => {
+    fetch(`/api/solicitudes/${expedienteId}`)
+      .then((r) => r.json())
+      .then((datos) => {
+        // Evita pagar sin documentos completos, o volver a pagar cuando el
+        // trámite ya pasó a la etapa de creación de cuenta.
+        const paso = pasoActualDelWizard(datos.expediente);
+        if (paso !== "pago") {
+          router.replace(`/solicitud/${expedienteId}/${paso}`);
+          return;
+        }
+        setVerificandoAcceso(false);
+      });
+  }, [expedienteId, router]);
 
   async function pagar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -59,6 +76,14 @@ export default function PasoPago() {
     }
 
     router.push(`/solicitud/${expedienteId}/cuenta`);
+  }
+
+  if (verificandoAcceso) {
+    return (
+      <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
+        <p className="text-sm text-gray-500">Cargando...</p>
+      </main>
+    );
   }
 
   return (

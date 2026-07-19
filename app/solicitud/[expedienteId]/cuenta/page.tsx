@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
+import { pasoActualDelWizard } from "@/lib/wizardPasos";
 
 export default function PasoCuenta() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
@@ -15,6 +16,21 @@ export default function PasoCuenta() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [verificandoAcceso, setVerificandoAcceso] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/solicitudes/${expedienteId}`)
+      .then((r) => r.json())
+      .then((datos) => {
+        // No dejar crear la cuenta (paso E) sin haber pagado antes (paso D).
+        const paso = pasoActualDelWizard(datos.expediente);
+        if (paso !== "cuenta") {
+          router.replace(`/solicitud/${expedienteId}/${paso}`);
+          return;
+        }
+        setVerificandoAcceso(false);
+      });
+  }, [expedienteId, router]);
 
   async function manejarEnvio(evento: React.FormEvent) {
     evento.preventDefault();
@@ -36,6 +52,14 @@ export default function PasoCuenta() {
     }
 
     router.push(`/solicitud/${expedienteId}/confirmacion`);
+  }
+
+  if (verificandoAcceso) {
+    return (
+      <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
+        <p className="text-sm text-gray-500">Cargando...</p>
+      </main>
+    );
   }
 
   return (

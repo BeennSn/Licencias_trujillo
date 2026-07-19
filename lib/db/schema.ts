@@ -142,6 +142,9 @@ export const inspecciones = pgTable("inspecciones", {
     .references(() => expedientes.id),
   tipo: tipoInspeccion("tipo").notNull(),
   fechaProgramada: date("fecha_programada").notNull(),
+  // Hora de la visita dentro del día (ver HORAS_INSPECCION en lib/constantes.ts).
+  // Nullable porque las inspecciones creadas antes de este campo no tienen hora.
+  horaProgramada: varchar("hora_programada", { length: 5 }),
   inspectorId: uuid("inspector_id")
     .notNull()
     .references(() => usuarios.id),
