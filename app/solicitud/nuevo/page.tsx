@@ -8,7 +8,15 @@ import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 
 type ResultadoRuc =
-  | { disponible: true; ruc: string; razonSocial: string; estado: string; condicion: string; esValidoParaTramite: boolean }
+  | {
+      disponible: true;
+      ruc: string;
+      razonSocial: string;
+      estado: string;
+      condicion: string;
+      tienePresenciaEnTrujillo: boolean;
+      esValidoParaTramite: boolean;
+    }
   | { disponible: false; motivo: string; bloqueante: boolean };
 
 export default function PasoRuc() {
@@ -102,7 +110,13 @@ export default function PasoRuc() {
               <p><span className="font-medium">Razón social:</span> {resultado.razonSocial}</p>
               <p><span className="font-medium">Estado SUNAT:</span> {resultado.estado || "—"}</p>
               <p><span className="font-medium">Condición:</span> {resultado.condicion || "—"}</p>
-              {!resultado.esValidoParaTramite && (
+              {!resultado.esValidoParaTramite && !resultado.tienePresenciaEnTrujillo && (
+                <p className="text-red-600 font-medium pt-2">
+                  Este RUC no tiene domicilio fiscal ni local anexo registrado en la Provincia de Trujillo ante
+                  SUNAT. Este sistema solo atiende negocios de Trujillo.
+                </p>
+              )}
+              {!resultado.esValidoParaTramite && resultado.tienePresenciaEnTrujillo && (
                 <p className="text-red-600 font-medium pt-2">
                   Este RUC no está ACTIVO y HABIDO en SUNAT, por lo que no puede continuar con el trámite.
                 </p>

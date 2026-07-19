@@ -32,6 +32,15 @@ export async function POST(request: Request) {
   let condicionHabido: string | undefined;
 
   if (resultadoSunat.disponible) {
+    if (!resultadoSunat.tienePresenciaEnTrujillo) {
+      return NextResponse.json(
+        {
+          error:
+            "Este RUC no tiene domicilio fiscal ni local anexo registrado en la Provincia de Trujillo ante SUNAT. Este sistema solo atiende negocios de Trujillo.",
+        },
+        { status: 400 }
+      );
+    }
     if (!resultadoSunat.esValidoParaTramite) {
       return NextResponse.json(
         { error: "El RUC debe estar ACTIVO y HABIDO en SUNAT para iniciar el trámite." },

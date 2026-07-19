@@ -46,6 +46,8 @@ Solo se atienden negocios ubicados en los distritos de la Provincia de Trujillo:
 
 Trujillo, El Porvenir, La Esperanza, Florencia de Mora, Huanchaco, Laredo, Moche, Poroto, Salaverry, Simbal y Víctor Larco Herrera.
 
+Esto se verifica en dos niveles: (1) contra SUNAT, al validar el RUC — se exige que el domicilio fiscal o al menos un local anexo del RUC figure en la provincia de Trujillo, departamento La Libertad (ver `lib/sunat.ts::tienePresenciaEnTrujillo`); y (2) en el formulario de domicilio del local a licenciar, donde el distrito solo puede ser uno de los 11 listados arriba.
+
 ## Roles del sistema
 
 - **Negocio**: sin cuenta hasta completar el pago del primer trámite; luego usa correo y contraseña para ver su expediente, reportar cambios y renovar.

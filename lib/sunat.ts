@@ -1,11 +1,14 @@
 // Validación de RUC contra la API de Decolecta (https://decolecta.com), que
-// consulta datos reales de SUNAT: si el RUC existe, su razón social, y si
+// consulta datos reales de SUNAT: si el RUC existe, su razón social, su
+// domicilio fiscal (distrito/provincia/departamento) y locales anexos, y si
 // está ACTIVO y HABIDO. No es el convenio empresarial oficial de SUNAT (eso
 // requiere trámite formal con la municipalidad), pero sirve para verificar
 // que el negocio sea real.
 //
 // Endpoint: GET {SUNAT_API_URL}?numero={ruc}  con  Authorization: Bearer {SUNAT_API_TOKEN}
-// Respuesta de ejemplo (campos que usamos): { razon_social, estado, condicion }
+// Campos que usamos de la respuesta: razon_social, estado, condicion,
+// provincia, departamento, locales_anexos (cada uno con su propia
+// provincia/departamento).
 //
 // Antes de llamar al servicio, se corren validaciones locales (formato,
 // tipo de RUC, dígito verificador — ver lib/validacionRuc.ts). Si esas
@@ -16,6 +19,30 @@
 // social, dejando una marca para revisión.
 import { validarRucLocalmente } from "./validacionRuc";
 
+const DEPARTAMENTO_TRUJILLO = "LA LIBERTAD";
+const PROVINCIA_TRUJILLO = "TRUJILLO";
+
+export type LocalAnexoSunat = { provincia?: string; departamento?: string };
+
+// El sistema es solo para la Provincia de Trujillo (ver lib/distritosTrujillo.ts).
+// Un RUC califica si su domicilio fiscal está en Trujillo, O si tiene al
+// menos un local anexo registrado ahí (común en cadenas con sede legal en
+// Lima pero tiendas/locales en Trujillo que también necesitan su propia
+// licencia de funcionamiento).
+export function tienePresenciaEnTrujillo(datos: {
+  provincia?: string;
+  departamento?: string;
+  locales_anexos?: LocalAnexoSunat[];
+}): boolean {
+  const esTrujillo = (provincia?: string, departamento?: string) =>
+    (provincia ?? "").toUpperCase() === PROVINCIA_TRUJILLO &&
+    (departamento ?? "").toUpperCase() === DEPARTAMENTO_TRUJILLO;
+
+  if (esTrujillo(datos.provincia, datos.departamento)) return true;
+
+  return (datos.locales_anexos ?? []).some((local) => esTrujillo(local.provincia, local.departamento));
+}
+
 export type ResultadoConsultaRuc =
   | {
       disponible: true;
@@ -23,6 +50,7 @@ export type ResultadoConsultaRuc =
       razonSocial: string;
       estado: string;
       condicion: string;
+      tienePresenciaEnTrujillo: boolean;
       esValidoParaTramite: boolean;
     }
   | {
@@ -76,13 +104,16 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
       return { disponible: false, motivo: "No se encontró información para este RUC.", bloqueante: false };
     }
 
+    const presenciaEnTrujillo = tienePresenciaEnTrujillo(datos);
+
     return {
       disponible: true,
       ruc,
       razonSocial,
       estado,
       condicion,
-      esValidoParaTramite: estado === "ACTIVO" && condicion === "HABIDO",
+      tienePresenciaEnTrujillo: presenciaEnTrujillo,
+      esValidoParaTramite: estado === "ACTIVO" && condicion === "HABIDO" && presenciaEnTrujillo,
     };
   } catch {
     return {
