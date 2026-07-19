@@ -1,7 +1,7 @@
 // Script de siembra: crea un administrador y un inspector de prueba para
 // poder entrar al sistema apenas se despliega. Ejecutar con: npm run seed
 // (requiere DATABASE_URL configurada, ver .env.example).
-import "dotenv/config";
+import "../lib/cargarEnvLocal";
 import bcrypt from "bcryptjs";
 import { db } from "../lib/db/client";
 import { usuarios } from "../lib/db/schema";
