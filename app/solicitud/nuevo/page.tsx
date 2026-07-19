@@ -9,7 +9,7 @@ import { StepIndicator } from "@/components/wizard/StepIndicator";
 
 type ResultadoRuc =
   | { disponible: true; ruc: string; razonSocial: string; estado: string; condicion: string; esValidoParaTramite: boolean }
-  | { disponible: false; motivo: string };
+  | { disponible: false; motivo: string; bloqueante: boolean };
 
 export default function PasoRuc() {
   const router = useRouter();
@@ -67,7 +67,9 @@ export default function PasoRuc() {
 
   const puedeContinuar =
     resultado &&
-    (resultado.disponible ? resultado.esValidoParaTramite : razonSocialManual.trim().length > 3);
+    (resultado.disponible
+      ? resultado.esValidoParaTramite
+      : !resultado.bloqueante && razonSocialManual.trim().length > 3);
 
   return (
     <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
@@ -108,7 +110,13 @@ export default function PasoRuc() {
             </div>
           )}
 
-          {resultado?.disponible === false && (
+          {resultado?.disponible === false && resultado.bloqueante && (
+            <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm">
+              <p className="text-red-700 font-medium">{resultado.motivo}</p>
+            </div>
+          )}
+
+          {resultado?.disponible === false && !resultado.bloqueante && (
             <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 space-y-3 text-sm">
               <p className="text-yellow-800">{resultado.motivo}</p>
               <p className="text-gray-600">

@@ -4,10 +4,18 @@ import { db } from "@/lib/db/client";
 import { negocios, expedientes } from "@/lib/db/schema";
 import { esquemaRuc } from "@/lib/validaciones";
 import { generarNumeroExpediente } from "@/lib/numeracion";
+import { consultarRuc } from "@/lib/sunat";
 
 // Paso A del wizard: crea (o reutiliza) el negocio por RUC y abre un
 // expediente nuevo en estado BORRADOR. Si el negocio ya tiene un expediente
 // en trámite (no terminal), se reutiliza ese en vez de crear uno duplicado.
+//
+// El RUC se vuelve a validar contra SUNAT acá, del lado del servidor: no se
+// confía en el estado/condición que mande el cliente (pudo llamar a este
+// endpoint directamente, saltándose la pantalla de validación del wizard).
+// Solo se acepta razón social escrita a mano cuando el servicio de SUNAT
+// realmente no responde (ver bloqueante en lib/sunat.ts); si el RUC es
+// inválido o SUNAT confirma que no está ACTIVO y HABIDO, se rechaza.
 export async function POST(request: Request) {
   const cuerpo = await request.json();
   const analisis = esquemaRuc.safeParse(cuerpo);
@@ -17,12 +25,33 @@ export async function POST(request: Request) {
   }
 
   const { ruc } = analisis.data;
-  const razonSocial: string | undefined = cuerpo.razonSocial;
-  const estadoSunat: string | undefined = cuerpo.estadoSunat;
-  const condicionHabido: string | undefined = cuerpo.condicionHabido;
+  const resultadoSunat = await consultarRuc(ruc);
 
-  if (!razonSocial) {
-    return NextResponse.json({ error: "Falta la razón social del negocio." }, { status: 400 });
+  let razonSocial: string;
+  let estadoSunat: string | undefined;
+  let condicionHabido: string | undefined;
+
+  if (resultadoSunat.disponible) {
+    if (!resultadoSunat.esValidoParaTramite) {
+      return NextResponse.json(
+        { error: "El RUC debe estar ACTIVO y HABIDO en SUNAT para iniciar el trámite." },
+        { status: 400 }
+      );
+    }
+    razonSocial = resultadoSunat.razonSocial;
+    estadoSunat = resultadoSunat.estado;
+    condicionHabido = resultadoSunat.condicion;
+  } else {
+    if (resultadoSunat.bloqueante) {
+      return NextResponse.json({ error: resultadoSunat.motivo }, { status: 400 });
+    }
+    // Servicio de SUNAT no disponible: se permite continuar con razón
+    // social escrita a mano, igual que en la pantalla del wizard.
+    const razonSocialManual: string | undefined = cuerpo.razonSocial;
+    if (!razonSocialManual) {
+      return NextResponse.json({ error: "Falta la razón social del negocio." }, { status: 400 });
+    }
+    razonSocial = razonSocialManual;
   }
 
   let [negocio] = await db.select().from(negocios).where(eq(negocios.ruc, ruc)).limit(1);

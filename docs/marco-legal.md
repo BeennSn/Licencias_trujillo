@@ -14,7 +14,7 @@ En la normativa real, el tipo de inspección (ITSE) y si esta se realiza **antes
 
 ## Requisitos exigidos por el sistema para iniciar el trámite
 
-1. RUC válido, verificado contra un servicio de consulta tipo SUNAT: debe figurar **ACTIVO** y **HABIDO**.
+1. RUC válido de **persona jurídica (tipo 20)**, con dígito verificador correcto, verificado contra un servicio de consulta tipo SUNAT: debe figurar **ACTIVO** y **HABIDO**. El sistema valida el formato, el tipo y el dígito verificador localmente (sin depender del servicio externo) antes de consultar SUNAT; ver `lib/validacionRuc.ts`.
 2. Razón social (obtenida automáticamente de la consulta de RUC, o ingresada manualmente si el servicio no responde).
 3. Domicilio fiscal / dirección del local, restringido a los distritos de la Provincia de Trujillo (ver lista abajo).
 4. Plano del local, con fecha de vigencia futura y sin estar "en trámite" (debe ya estar emitido).

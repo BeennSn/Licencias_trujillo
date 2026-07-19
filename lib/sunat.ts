@@ -7,34 +7,45 @@
 // Endpoint: GET {SUNAT_API_URL}?numero={ruc}  con  Authorization: Bearer {SUNAT_API_TOKEN}
 // Respuesta de ejemplo (campos que usamos): { razon_social, estado, condicion }
 //
-// Si el servicio externo falla o no responde (crítico el día de la demo),
-// se devuelve disponible=false y la pantalla del wizard permite continuar
-// con carga manual de razón social, dejando una marca para revisión.
+// Antes de llamar al servicio, se corren validaciones locales (formato,
+// tipo de RUC, dígito verificador — ver lib/validacionRuc.ts). Si esas
+// fallan, el resultado es "bloqueante": el wizard NO debe ofrecer carga
+// manual, porque el RUC en sí está mal. Si en cambio el servicio externo
+// falla o no responde (token vencido, timeout, etc.), el resultado NO es
+// bloqueante: ahí sí se permite continuar con carga manual de razón
+// social, dejando una marca para revisión.
+import { validarRucLocalmente } from "./validacionRuc";
 
 export type ResultadoConsultaRuc =
   | {
       disponible: true;
       ruc: string;
       razonSocial: string;
-      estado: string; // ej. "ACTIVO" | "BAJA DE OFICIO" | ...
-      condicion: string; // ej. "HABIDO" | "NO HABIDO"
+      estado: string;
+      condicion: string;
       esValidoParaTramite: boolean;
     }
   | {
       disponible: false;
       motivo: string;
+      // true = el RUC en sí es inválido (formato/tipo/dígito verificador, o
+      // SUNAT confirma que no existe): no se debe permitir carga manual.
+      // false = no se pudo verificar (servicio caído/no configurado): se
+      // permite continuar con carga manual, marcada para revisión.
+      bloqueante: boolean;
     };
 
 export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
-  if (!/^\d{11}$/.test(ruc)) {
-    return { disponible: false, motivo: "El RUC debe tener 11 dígitos numéricos." };
+  const validacionLocal = validarRucLocalmente(ruc);
+  if (!validacionLocal.valido) {
+    return { disponible: false, motivo: validacionLocal.motivo, bloqueante: true };
   }
 
   const url = process.env.SUNAT_API_URL;
   const token = process.env.SUNAT_API_TOKEN;
 
   if (!url || !token) {
-    return { disponible: false, motivo: "Servicio de validación de RUC no configurado." };
+    return { disponible: false, motivo: "Servicio de validación de RUC no configurado.", bloqueante: false };
   }
 
   try {
@@ -46,9 +57,15 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
     const datos = await respuesta.json();
 
     if (!respuesta.ok) {
-      // Decolecta responde 422 con {message: "ruc no valido"} y 401 si el
-      // token es inválido/excedió su cuota, entre otros casos.
-      return { disponible: false, motivo: datos.message ?? datos.error ?? "El servicio de SUNAT no respondió correctamente." };
+      // Decolecta responde 422 con {message: "ruc no valido"} cuando SUNAT
+      // no reconoce el RUC: eso sí es bloqueante (dato confirmado, no un
+      // problema de nuestro lado). 401/429/5xx son problemas del servicio
+      // (token vencido, cuota, caída), no bloquean.
+      return {
+        disponible: false,
+        motivo: datos.message ?? datos.error ?? "El servicio de SUNAT no respondió correctamente.",
+        bloqueante: respuesta.status === 422,
+      };
     }
 
     const razonSocial: string | undefined = datos.razon_social;
@@ -56,7 +73,7 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
     const condicion: string = (datos.condicion ?? "").toString().toUpperCase();
 
     if (!razonSocial) {
-      return { disponible: false, motivo: "No se encontró información para este RUC." };
+      return { disponible: false, motivo: "No se encontró información para este RUC.", bloqueante: false };
     }
 
     return {
@@ -68,6 +85,10 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
       esValidoParaTramite: estado === "ACTIVO" && condicion === "HABIDO",
     };
   } catch {
-    return { disponible: false, motivo: "No se pudo conectar con el servicio de SUNAT. Intenta de nuevo o ingresa los datos manualmente." };
+    return {
+      disponible: false,
+      motivo: "No se pudo conectar con el servicio de SUNAT. Intenta de nuevo o ingresa los datos manualmente.",
+      bloqueante: false,
+    };
   }
 }

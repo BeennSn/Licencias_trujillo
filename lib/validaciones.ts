@@ -3,9 +3,18 @@
 // así es más fácil ver de un vistazo qué reglas aplica cada paso.
 import { z } from "zod";
 import { DISTRITOS_TRUJILLO } from "./distritosTrujillo";
+import { esTipoPermitido, tieneDigitoVerificadorValido } from "./validacionRuc";
 
+// Repite las validaciones de lib/validacionRuc.ts como defensa en
+// profundidad: la pantalla del wizard ya las corre antes de llamar a este
+// endpoint, pero el endpoint no debe confiar solo en eso por si alguien lo
+// llama directamente.
 export const esquemaRuc = z.object({
-  ruc: z.string().regex(/^\d{11}$/, "El RUC debe tener 11 dígitos numéricos."),
+  ruc: z
+    .string()
+    .regex(/^\d{11}$/, "El RUC debe tener 11 dígitos numéricos.")
+    .refine(esTipoPermitido, "Solo se aceptan RUC de persona jurídica (tipo 20).")
+    .refine(tieneDigitoVerificadorValido, "El RUC ingresado no es válido (dígito verificador incorrecto)."),
 });
 
 export const esquemaDomicilio = z.object({
