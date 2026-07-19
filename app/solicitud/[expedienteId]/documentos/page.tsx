@@ -26,7 +26,6 @@ export default function PasoDocumentos() {
   const [tipo, setTipo] = useState<"plano_local" | "otro">("plano_local");
   const [nombre, setNombre] = useState("");
   const [fechaVigencia, setFechaVigencia] = useState("");
-  const [enTramite, setEnTramite] = useState(false);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -64,7 +63,6 @@ export default function PasoDocumentos() {
     formulario.append("tipo", tipo);
     formulario.append("nombre", nombre || archivo.name);
     formulario.append("fechaVigencia", fechaVigencia);
-    formulario.append("enTramite", String(enTramite));
     formulario.append("archivo", archivo);
 
     const respuesta = await fetch(`/api/solicitudes/${expedienteId}/documentos`, {
@@ -83,7 +81,6 @@ export default function PasoDocumentos() {
     setDocumentos(listado.documentos ?? []);
     setNombre("");
     setFechaVigencia("");
-    setEnTramite(false);
     setArchivo(null);
   }
 
@@ -116,11 +113,6 @@ export default function PasoDocumentos() {
               onChange={(e) => setFechaVigencia(e.target.value)}
             />
 
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={enTramite} onChange={(e) => setEnTramite(e.target.checked)} />
-              Este documento está en trámite (aún no ha sido emitido)
-            </label>
-
             <Input
               label="Archivo (PDF, JPG o PNG, máx. 10 MB)"
               type="file"
@@ -145,11 +137,7 @@ export default function PasoDocumentos() {
                   <span>
                     {doc.tipo === "plano_local" ? "Plano del local" : doc.nombre} · vigente hasta {doc.fechaVigencia}
                   </span>
-                  {doc.enTramite ? (
-                    <span className="text-yellow-700 text-xs font-semibold">En trámite (no válido)</span>
-                  ) : (
-                    <span className="text-green-700 text-xs font-semibold">Vigente</span>
-                  )}
+                  <span className="text-green-700 text-xs font-semibold">Vigente</span>
                 </li>
               ))}
             </ul>
