@@ -7,8 +7,8 @@
 //
 // Endpoint: GET {SUNAT_API_URL}?numero={ruc}  con  Authorization: Bearer {SUNAT_API_TOKEN}
 // Campos que usamos de la respuesta: razon_social, estado, condicion,
-// provincia, departamento, locales_anexos (cada uno con su propia
-// provincia/departamento).
+// direccion, distrito, provincia, departamento, locales_anexos (cada uno
+// con su propia direccion/distrito/provincia/departamento).
 //
 // Antes de llamar al servicio, se corren validaciones locales (formato,
 // tipo de RUC, dígito verificador — ver lib/validacionRuc.ts). Si esas
@@ -22,7 +22,22 @@ import { validarRucLocalmente } from "./validacionRuc";
 const DEPARTAMENTO_TRUJILLO = "LA LIBERTAD";
 const PROVINCIA_TRUJILLO = "TRUJILLO";
 
-export type LocalAnexoSunat = { provincia?: string; departamento?: string };
+export type LocalAnexoSunat = { provincia?: string; departamento?: string; direccion?: string; distrito?: string };
+
+type DatosUbicacionSunat = {
+  direccion?: string;
+  distrito?: string;
+  provincia?: string;
+  departamento?: string;
+  locales_anexos?: LocalAnexoSunat[];
+};
+
+function esUbicacionTrujillo(provincia?: string, departamento?: string): boolean {
+  return (
+    (provincia ?? "").toUpperCase() === PROVINCIA_TRUJILLO &&
+    (departamento ?? "").toUpperCase() === DEPARTAMENTO_TRUJILLO
+  );
+}
 
 // El sistema es solo para la Provincia de Trujillo (ver lib/distritosTrujillo.ts).
 // Un RUC califica si su domicilio fiscal está en Trujillo, O si tiene al
@@ -34,13 +49,33 @@ export function tienePresenciaEnTrujillo(datos: {
   departamento?: string;
   locales_anexos?: LocalAnexoSunat[];
 }): boolean {
-  const esTrujillo = (provincia?: string, departamento?: string) =>
-    (provincia ?? "").toUpperCase() === PROVINCIA_TRUJILLO &&
-    (departamento ?? "").toUpperCase() === DEPARTAMENTO_TRUJILLO;
+  if (esUbicacionTrujillo(datos.provincia, datos.departamento)) return true;
+  return (datos.locales_anexos ?? []).some((local) => esUbicacionTrujillo(local.provincia, local.departamento));
+}
 
-  if (esTrujillo(datos.provincia, datos.departamento)) return true;
+export type DireccionTrujillo = { distrito: string; direccion: string };
 
-  return (datos.locales_anexos ?? []).some((local) => esTrujillo(local.provincia, local.departamento));
+// Extrae las direcciones (domicilio fiscal y/o locales anexos) que SUNAT
+// tiene registradas en la Provincia de Trujillo para este RUC, para
+// ofrecerlas como sugerencia de autocompletado en el paso de domicilio del
+// wizard (en vez de que el negocio tipee la dirección a ciegas). Si el RUC
+// no tiene ninguna dirección en Trujillo (ej. va a abrir un local nuevo que
+// SUNAT todavía no registra como anexo), la lista viene vacía y el wizard
+// debe permitir carga manual igual.
+export function direccionesEnTrujillo(datos: DatosUbicacionSunat): DireccionTrujillo[] {
+  const direcciones: DireccionTrujillo[] = [];
+
+  if (esUbicacionTrujillo(datos.provincia, datos.departamento) && datos.direccion?.trim()) {
+    direcciones.push({ distrito: datos.distrito?.trim() || PROVINCIA_TRUJILLO, direccion: datos.direccion.trim() });
+  }
+
+  for (const anexo of datos.locales_anexos ?? []) {
+    if (esUbicacionTrujillo(anexo.provincia, anexo.departamento) && anexo.direccion?.trim()) {
+      direcciones.push({ distrito: anexo.distrito?.trim() || PROVINCIA_TRUJILLO, direccion: anexo.direccion.trim() });
+    }
+  }
+
+  return direcciones;
 }
 
 export type ResultadoConsultaRuc =
@@ -51,6 +86,7 @@ export type ResultadoConsultaRuc =
       estado: string;
       condicion: string;
       tienePresenciaEnTrujillo: boolean;
+      direccionesTrujillo: DireccionTrujillo[];
       esValidoParaTramite: boolean;
     }
   | {
@@ -113,6 +149,7 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
       estado,
       condicion,
       tienePresenciaEnTrujillo: presenciaEnTrujillo,
+      direccionesTrujillo: direccionesEnTrujillo(datos),
       esValidoParaTramite: estado === "ACTIVO" && condicion === "HABIDO" && presenciaEnTrujillo,
     };
   } catch {

@@ -4,7 +4,7 @@ import { db } from "@/lib/db/client";
 import { negocios, expedientes } from "@/lib/db/schema";
 import { esquemaRuc } from "@/lib/validaciones";
 import { generarNumeroExpediente } from "@/lib/numeracion";
-import { consultarRuc } from "@/lib/sunat";
+import { consultarRuc, type DireccionTrujillo } from "@/lib/sunat";
 
 // Paso A del wizard: crea (o reutiliza) el negocio por RUC y abre un
 // expediente nuevo en estado BORRADOR. Si el negocio ya tiene un expediente
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
   let razonSocial: string;
   let estadoSunat: string | undefined;
   let condicionHabido: string | undefined;
+  let direccionesTrujillo: DireccionTrujillo[] | undefined;
 
   if (resultadoSunat.disponible) {
     if (!resultadoSunat.tienePresenciaEnTrujillo) {
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     razonSocial = resultadoSunat.razonSocial;
     estadoSunat = resultadoSunat.estado;
     condicionHabido = resultadoSunat.condicion;
+    direccionesTrujillo = resultadoSunat.direccionesTrujillo;
   } else {
     if (resultadoSunat.bloqueante) {
       return NextResponse.json({ error: resultadoSunat.motivo }, { status: 400 });
@@ -68,7 +70,15 @@ export async function POST(request: Request) {
   if (!negocio) {
     [negocio] = await db
       .insert(negocios)
-      .values({ ruc, razonSocial, estadoSunat, condicionHabido })
+      .values({ ruc, razonSocial, estadoSunat, condicionHabido, direccionesTrujillo: direccionesTrujillo ?? [] })
+      .returning();
+  } else if (direccionesTrujillo) {
+    // Refresca el caché de direcciones con el dato más reciente de SUNAT
+    // (por si se registró un anexo nuevo desde la última consulta).
+    [negocio] = await db
+      .update(negocios)
+      .set({ direccionesTrujillo })
+      .where(eq(negocios.id, negocio.id))
       .returning();
   }
 

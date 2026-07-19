@@ -10,7 +10,9 @@ import {
   timestamp,
   numeric,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
+import type { DireccionTrujillo } from "../sunat";
 
 export const rolUsuario = pgEnum("rol_usuario", ["negocio", "inspector", "admin"]);
 
@@ -74,6 +76,11 @@ export const negocios = pgTable("negocios", {
   razonSocial: varchar("razon_social", { length: 500 }).notNull(),
   estadoSunat: varchar("estado_sunat", { length: 50 }),
   condicionHabido: varchar("condicion_habido", { length: 50 }),
+  // Direcciones en la Provincia de Trujillo (domicilio fiscal y/o locales
+  // anexos) que SUNAT tiene registradas para este RUC, cacheadas en la
+  // última validación exitosa. Se usan para sugerir/autocompletar el
+  // domicilio del local en el paso B del wizard (ver lib/sunat.ts).
+  direccionesTrujillo: jsonb("direcciones_trujillo").$type<DireccionTrujillo[]>().notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

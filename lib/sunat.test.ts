@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tienePresenciaEnTrujillo } from "./sunat";
+import { direccionesEnTrujillo, tienePresenciaEnTrujillo } from "./sunat";
 
 describe("tienePresenciaEnTrujillo", () => {
   it("acepta un RUC cuyo domicilio fiscal está en Trujillo", () => {
@@ -41,5 +41,54 @@ describe("tienePresenciaEnTrujillo", () => {
 
   it("maneja datos sin locales_anexos (undefined) sin lanzar error", () => {
     expect(tienePresenciaEnTrujillo({ provincia: "LIMA", departamento: "LIMA" })).toBe(false);
+  });
+});
+
+describe("direccionesEnTrujillo", () => {
+  it("incluye el domicilio fiscal cuando está en Trujillo", () => {
+    expect(
+      direccionesEnTrujillo({
+        direccion: "AV. ESPAÑA 123",
+        distrito: "TRUJILLO",
+        provincia: "TRUJILLO",
+        departamento: "LA LIBERTAD",
+      })
+    ).toEqual([{ distrito: "TRUJILLO", direccion: "AV. ESPAÑA 123" }]);
+  });
+
+  it("incluye solo los locales anexos que están en Trujillo (como Supermercados Peruanos)", () => {
+    const resultado = direccionesEnTrujillo({
+      direccion: "CAL. MORELLI NRO 181",
+      distrito: "SAN BORJA",
+      provincia: "LIMA",
+      departamento: "LIMA",
+      locales_anexos: [
+        { direccion: "NRO 300", distrito: "AREQUIPA", provincia: "AREQUIPA", departamento: "AREQUIPA" },
+        {
+          direccion: "FND. LAS CASUARINAS LT A MZ S/N",
+          distrito: "TRUJILLO",
+          provincia: "TRUJILLO",
+          departamento: "LA LIBERTAD",
+        },
+      ],
+    });
+
+    expect(resultado).toEqual([
+      { distrito: "TRUJILLO", direccion: "FND. LAS CASUARINAS LT A MZ S/N" },
+    ]);
+  });
+
+  it("devuelve una lista vacía si no hay ninguna dirección en Trujillo", () => {
+    expect(direccionesEnTrujillo({ direccion: "AV. X", provincia: "LIMA", departamento: "LIMA" })).toEqual([]);
+  });
+
+  it("ignora un local anexo en Trujillo sin dirección utilizable", () => {
+    expect(
+      direccionesEnTrujillo({
+        provincia: "LIMA",
+        departamento: "LIMA",
+        locales_anexos: [{ provincia: "TRUJILLO", departamento: "LA LIBERTAD", direccion: "" }],
+      })
+    ).toEqual([]);
   });
 });
