@@ -1,18 +1,28 @@
-// Envío de correos con Resend. Plantillas simples en texto/HTML plano,
-// suficientes para el MVP (sin diseño elaborado). Si RESEND_API_KEY no está
-// configurada, se registra en consola en vez de fallar, para no romper el
-// flujo completo durante desarrollo local sin credenciales.
-import { Resend } from "resend";
+// Envío de correos por SMTP (Gmail: smtp.gmail.com, con una contraseña de
+// aplicación, no la contraseña normal de la cuenta). Plantillas simples en
+// texto/HTML plano, suficientes para el MVP (sin diseño elaborado). Si
+// SMTP_HOST no está configurado, se registra en consola en vez de fallar,
+// para no romper el flujo completo durante desarrollo local sin
+// credenciales.
+import nodemailer from "nodemailer";
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM = process.env.RESEND_FROM_EMAIL ?? "notificaciones@licencias-trujillo.pe";
+const transportador = process.env.SMTP_HOST
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT ?? 587),
+      secure: Number(process.env.SMTP_PORT ?? 587) === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    })
+  : null;
+
+const FROM = process.env.SMTP_FROM_EMAIL ?? process.env.SMTP_USER ?? "notificaciones@licencias-trujillo.pe";
 
 async function enviarCorreo(destinatario: string, asunto: string, cuerpoHtml: string) {
-  if (!resend) {
+  if (!transportador) {
     console.log(`[email simulado] Para: ${destinatario} | Asunto: ${asunto}\n${cuerpoHtml}`);
     return;
   }
-  await resend.emails.send({ from: FROM, to: destinatario, subject: asunto, html: cuerpoHtml });
+  await transportador.sendMail({ from: FROM, to: destinatario, subject: asunto, html: cuerpoHtml });
 }
 
 export async function enviarCorreoRecuperacion(destinatario: string, enlace: string) {
