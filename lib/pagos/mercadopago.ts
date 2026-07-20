@@ -8,12 +8,19 @@
 // más abajo, que reduce el monto real a S/1.80 aunque el negocio vea S/180).
 // Ver: https://www.mercadopago.com.pe/developers/es/docs/checkout-api/additional-content/your-integrations/test/accounts
 //
-// El medio "tarjeta" usa el Card Payment Brick real de Mercado Pago
-// (app/solicitud/[expedienteId]/pago/page.tsx, @mercadopago/sdk-react), que
-// tokeniza la tarjeta en el navegador y entrega paymentMethodId/issuerId
-// junto al token — necesarios para que este cobro sea válido. Yape/
-// PagoEfectivo no usan token de tarjeta, van directo por payment_method_id
-// (tampoco se probaron aún con una cuenta de producción real).
+// El pago del paso D del wizard usa Checkout Pro (crearPreferenciaDeCobro
+// más abajo): se redirige al negocio a la propia plataforma de Mercado
+// Pago, que ya sabe procesar tarjeta, Yape y PagoEfectivo sin que este
+// backend tenga que armar cada cobro a mano (eso es justo lo que fallaba
+// antes: Yape/PagoEfectivo mandados directo a /v1/payments con solo
+// payment_method_id nunca funcionaron con una cuenta real). El pago se
+// confirma después, cuando Mercado Pago redirige de vuelta (ver
+// app/api/solicitudes/[id]/pago/confirmar y lib/pagoAprobado.ts).
+//
+// cobrarDerechoDeTramite (cobro directo con token, sin redirección) se
+// mantiene solo para el modo simulado (sin MERCADOPAGO_ACCESS_TOKEN) y para
+// la renovación web (app/api/negocio/renovar), que todavía no se migró a
+// Checkout Pro.
 //
 // Si no hay MERCADOPAGO_ACCESS_TOKEN configurada, se SIMULA la aprobación
 // localmente para no bloquear el resto del flujo durante el desarrollo.
@@ -29,21 +36,15 @@ export type ResultadoCobro =
   | { aprobado: true; referencia: string }
   | { aprobado: false; motivo: string };
 
-// Para tarjeta, el frontend genera un token con el SDK de Mercado Pago
-// (Card Payment Brick / MP.js) y Mercado Pago infiere el medio de pago a
-// partir de ese token. Yape y PagoEfectivo en Perú no usan token de
-// tarjeta: se envían directo como payment_method_id. A diferencia de una
-// tarjeta (aprobación inmediata), Mercado Pago puede devolver estos como
-// "pending" hasta que el cliente confirma en su app/agente; este MVP los
-// trata como "no aprobado todavía" (ver comentario en la ruta de pago).
+// Cobro directo con token, usado por la renovación web (que todavía no se
+// migró a Checkout Pro, ver arriba) y por el modo simulado. El token de
+// tarjeta en un uso real tendría que venir de un SDK de Mercado Pago que
+// tokenice en el cliente (esta función nunca recibe el número de tarjeta
+// en texto plano); Yape y PagoEfectivo van directo por payment_method_id.
 export async function cobrarDerechoDeTramite(
   tokenPago: string,
   email: string,
-  medioPago: MedioPago,
-  // Solo aplican a "tarjeta": los entrega el Card Payment Brick junto al
-  // token. Mercado Pago los exige para procesar el cobro (identifican la
-  // marca de la tarjeta y el banco emisor).
-  datosTarjeta?: { paymentMethodId?: string; issuerId?: string }
+  medioPago: MedioPago
 ): Promise<ResultadoCobro> {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
@@ -74,12 +75,8 @@ export async function cobrarDerechoDeTramite(
       description: "Derecho de trámite - Licencia de funcionamiento MPT",
       installments: 1,
       // Con tarjeta, el "token" es el token de tarjeta tokenizado en el
-      // cliente (Card Payment Brick), junto con la marca (payment_method_id,
-      // ej. "visa") y el banco emisor (issuer_id) que entrega el mismo
-      // Brick; con Yape/PagoEfectivo se indica el medio directamente.
-      ...(esTarjeta
-        ? { token: tokenPago, payment_method_id: datosTarjeta?.paymentMethodId, issuer_id: datosTarjeta?.issuerId }
-        : { payment_method_id: medioPago }),
+      // cliente; con Yape/PagoEfectivo se indica el medio directamente.
+      ...(esTarjeta ? { token: tokenPago } : { payment_method_id: medioPago }),
       payer: { email },
     }),
   });
@@ -101,4 +98,66 @@ export async function cobrarDerechoDeTramite(
   }
 
   return { aprobado: true, referencia: String(datos.id) };
+}
+
+export type ResultadoPreferencia =
+  | { ok: true; initPoint: string }
+  | { ok: false; motivo: string };
+
+// Crea una "preferencia" de Checkout Pro: Mercado Pago devuelve un
+// init_point (URL) al que se redirige al negocio para completar el pago en
+// su propia plataforma, eligiendo ahí tarjeta, Yape o PagoEfectivo. Nunca
+// se cobra en esta llamada — Mercado Pago avisa el resultado más tarde
+// (redirección de vuelta + webhook), nunca antes.
+export async function crearPreferenciaDeCobro(params: {
+  expedienteId: string;
+  email: string;
+  urlBase: string; // NEXT_PUBLIC_SITE_URL, sin barra final
+}): Promise<ResultadoPreferencia> {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!accessToken) {
+    return { ok: false, motivo: "Mercado Pago no está configurado." };
+  }
+
+  const { expedienteId, email, urlBase } = params;
+  const urlResultado = `${urlBase}/solicitud/${expedienteId}/pago/resultado`;
+
+  const respuesta = await fetch("https://api.mercadopago.com/checkout/preferences", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": crypto.randomUUID(),
+    },
+    body: JSON.stringify({
+      items: [
+        {
+          title: "Derecho de trámite - Licencia de funcionamiento MPT",
+          quantity: 1,
+          // Cobro real reducido mientras se prueba con credenciales de
+          // producción (ver MONTO_TRAMITE_COBRO_REAL_SOLES en
+          // lib/constantes.ts). OJO: a diferencia del resto del sitio (que
+          // siempre muestra S/180), la propia página de Mercado Pago sí va
+          // a mostrar el monto real (S/1.80) — es su checkout, no lo
+          // podemos controlar, y mostrar cualquier otro monto ahí sería
+          // directamente falso.
+          unit_price: MONTO_TRAMITE_COBRO_REAL_SOLES,
+          currency_id: "PEN",
+        },
+      ],
+      payer: { email },
+      back_urls: { success: urlResultado, failure: urlResultado, pending: urlResultado },
+      auto_return: "approved",
+      external_reference: expedienteId,
+      notification_url: `${urlBase}/api/webhooks/mercadopago`,
+    }),
+  });
+
+  const datos = await respuesta.json();
+
+  if (!respuesta.ok || !datos.init_point) {
+    return { ok: false, motivo: datos.message ?? "No se pudo iniciar el pago con Mercado Pago." };
+  }
+
+  return { ok: true, initPoint: datos.init_point };
 }

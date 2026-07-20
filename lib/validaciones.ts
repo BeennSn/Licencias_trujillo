@@ -79,14 +79,18 @@ export const esquemaCuenta = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
 });
 
+// Usado solo en modo simulado (sin MERCADOPAGO_ACCESS_TOKEN configurado);
+// con credenciales reales, el pago va por Checkout Pro (ver
+// esquemaIniciarPagoMercadoPago) y no necesita medioPago/tokenPago del
+// cliente — Mercado Pago se encarga de eso en su propia plataforma.
 export const esquemaPago = z.object({
   medioPago: z.enum(["tarjeta", "yape", "pagoefectivo"]),
   tokenPago: z.string().min(1, "Falta el token de pago generado por la pasarela."),
   email: correoNoTemporal,
-  // Solo vienen cuando medioPago="tarjeta" y se pagó con el Card Payment
-  // Brick real de Mercado Pago (ver app/solicitud/[expedienteId]/pago/page.tsx).
-  paymentMethodId: z.string().optional(),
-  issuerId: z.string().optional(),
+});
+
+export const esquemaIniciarPagoMercadoPago = z.object({
+  email: correoNoTemporal,
 });
 
 // Antes esta ruta no validaba nada (tomaba el body tal cual); ahora exige
