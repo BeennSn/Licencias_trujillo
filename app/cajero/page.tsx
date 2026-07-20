@@ -17,6 +17,15 @@ export default function PaginaCajero() {
           </p>
         </Card>
       </Link>
+
+      <Link href="/cajero/renovar">
+        <Card className="hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer">
+          <h2 className="font-semibold text-gray-900">Renovar licencia</h2>
+          <p className="text-sm text-gray-500">
+            Busca al negocio por RUC y cobra en efectivo la renovación de su licencia.
+          </p>
+        </Card>
+      </Link>
     </main>
   );
 }

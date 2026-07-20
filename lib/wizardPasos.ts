@@ -32,9 +32,13 @@ export function puedeVerCuenta(expediente: ExpedienteResumen): boolean {
 // todavía (avanzar sin terminar el paso anterior) o ya quedó atrás
 // (retroceder a un paso ya completado). Se usa solo como destino de
 // redirección, no como fuente de verdad de "qué página es válida ahora".
-export function pasoPorDefecto(expediente: ExpedienteResumen): string {
+//
+// `pasoPago` permite que una sesión de cajero (pago presencial en efectivo,
+// ver app/solicitud/[expedienteId]/pago-presencial) redirija a su propio
+// paso de pago en vez del paso web con la pasarela de Mercado Pago.
+export function pasoPorDefecto(expediente: ExpedienteResumen, pasoPago: string = "pago"): string {
   if (!expediente.distrito) return "domicilio";
   if (puedeVerDocumentos(expediente)) return "documentos";
-  if (puedeVerPago(expediente)) return "pago";
+  if (puedeVerPago(expediente)) return pasoPago;
   return "cuenta";
 }

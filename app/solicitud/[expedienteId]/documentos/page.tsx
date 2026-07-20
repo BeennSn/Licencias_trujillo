@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -22,6 +23,10 @@ type Documento = {
 export default function PasoDocumentos() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
   const router = useRouter();
+  const { data: sesion, status: estadoSesion } = useSession();
+  // Un cajero atendiendo en ventanilla cobra en efectivo, sin pasarela: el
+  // resto del wizard (RUC/domicilio/documentos) es igual para ambos canales.
+  const pasoDePago = sesion?.user?.rol === "cajero" ? "pago-presencial" : "pago";
 
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [tipo, setTipo] = useState<"plano_local" | "otro">("plano_local");
@@ -34,13 +39,15 @@ export default function PasoDocumentos() {
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   useEffect(() => {
+    if (estadoSesion === "loading") return;
+
     fetch(`/api/solicitudes/${expedienteId}`)
       .then((r) => r.json())
       .then((datos) => {
         // Evita saltar a este paso sin haber fijado el domicilio, o volver a
         // él cuando el trámite ya avanzó más allá del pago.
         if (!puedeVerDocumentos(datos.expediente)) {
-          router.replace(`/solicitud/${expedienteId}/${pasoPorDefecto(datos.expediente)}`);
+          router.replace(`/solicitud/${expedienteId}/${pasoPorDefecto(datos.expediente, pasoDePago)}`);
           return;
         }
         setVerificandoAcceso(false);
@@ -49,7 +56,7 @@ export default function PasoDocumentos() {
     fetch(`/api/solicitudes/${expedienteId}/documentos`)
       .then((r) => r.json())
       .then((datos) => setDocumentos(datos.documentos ?? []));
-  }, [expedienteId, router]);
+  }, [expedienteId, router, estadoSesion, pasoDePago]);
 
   const tienePlanoValido = documentos.some((d) => d.tipo === "plano_local" && !d.enTramite);
 
@@ -214,7 +221,7 @@ export default function PasoDocumentos() {
           </div>
 
           <Button
-            onClick={() => router.push(`/solicitud/${expedienteId}/pago`)}
+            onClick={() => router.push(`/solicitud/${expedienteId}/${pasoDePago}`)}
             disabled={!tienePlanoValido}
             className="w-full"
           >

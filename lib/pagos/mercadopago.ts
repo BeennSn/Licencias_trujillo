@@ -13,7 +13,11 @@
 // localmente para no bloquear el resto del flujo durante el desarrollo.
 import { MONTO_TRAMITE_SOLES } from "../constantes";
 
-export type MedioPago = "tarjeta" | "yape" | "pagoefectivo";
+// "efectivo" nunca llega a cobrarDerechoDeTramite: es un pago presencial en
+// caja que el cajero confirma directo, sin pasar por la pasarela (ver
+// app/api/solicitudes/[id]/pago-presencial y app/api/cajero/renovar). Solo
+// está en este tipo para que pagos.medioPago tenga un único tipo compartido.
+export type MedioPago = "tarjeta" | "yape" | "pagoefectivo" | "efectivo";
 
 export type ResultadoCobro =
   | { aprobado: true; referencia: string }
