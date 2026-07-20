@@ -41,6 +41,9 @@ export const esquemaRuc = z.object({
     .refine(tieneDigitoVerificadorValido, "El RUC ingresado no es válido (dígito verificador incorrecto)."),
 });
 
+// DNI peruano: 8 dígitos.
+const dniPeru = z.string().regex(/^\d{8}$/, "El DNI debe tener 8 dígitos.");
+
 export const esquemaDomicilio = z.object({
   distrito: z.enum(DISTRITOS_TRUJILLO, {
     error: "Selecciona un distrito válido de la Provincia de Trujillo.",
@@ -52,6 +55,12 @@ export const esquemaDomicilio = z.object({
   // prefijo +51 puesto de forma distinta.
   emailContacto: correoNoTemporal.transform((email) => email.toLowerCase().trim()),
   telefonoContacto: telefonoPeru,
+  // Solo se usan para imprimir la licencia (ver lib/pdfLicencia.tsx).
+  nombreComercial: z.string().min(2, "Ingresa el nombre comercial del local."),
+  representanteLegalNombre: z.string().min(3, "Ingresa el nombre del representante legal."),
+  representanteLegalDni: dniPeru,
+  areaLocalM2: z.string().regex(/^\d+(\.\d{1,2})?$/, "Ingresa el área del local en m² (solo números)."),
+  horarioAtencion: z.string().min(3, "Indica el horario de atención del local."),
 });
 
 // Un documento solo es aceptable si su fecha de vigencia es futura y no

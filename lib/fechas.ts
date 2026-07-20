@@ -6,3 +6,15 @@ export function sumarAnios(fechaIso: string, cantidadAnios: number): string {
   fecha.setUTCFullYear(fecha.getUTCFullYear() + cantidadAnios);
   return fecha.toISOString().slice(0, 10);
 }
+
+const MESES_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+// "2026-01-05" -> "5 de enero del 2026" (formato usado en el pie de firma
+// de la licencia, ver lib/pdfLicencia.tsx).
+export function formatearFechaLarga(fechaIso: string): string {
+  const [anio, mes, dia] = fechaIso.split("-").map(Number);
+  return `${dia} de ${MESES_ES[mes - 1]} del ${anio}`;
+}

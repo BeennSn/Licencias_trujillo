@@ -22,6 +22,11 @@ export default function PasoDomicilio() {
     distrito: string;
     direccionLocal: string;
     giroActividad: string;
+    nombreComercial: string;
+    representanteLegalNombre: string;
+    representanteLegalDni: string;
+    areaLocalM2: string;
+    horarioAtencion: string;
     siguientePaso: string;
   } | null>(null);
 
@@ -36,6 +41,11 @@ export default function PasoDomicilio() {
   const [direccionLocal, setDireccionLocal] = useState("");
   const [giroSeleccionado, setGiroSeleccionado] = useState("");
   const [giroOtro, setGiroOtro] = useState("");
+  const [nombreComercial, setNombreComercial] = useState("");
+  const [representanteLegalNombre, setRepresentanteLegalNombre] = useState("");
+  const [representanteLegalDni, setRepresentanteLegalDni] = useState("");
+  const [areaLocalM2, setAreaLocalM2] = useState("");
+  const [horarioAtencion, setHorarioAtencion] = useState("");
   const [emailContacto, setEmailContacto] = useState("");
   const [telefonoContacto, setTelefonoContacto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +65,11 @@ export default function PasoDomicilio() {
             distrito: datos.expediente.distrito ?? "",
             direccionLocal: datos.expediente.direccionLocal ?? "",
             giroActividad: datos.expediente.giroActividad ?? "",
+            nombreComercial: datos.expediente.nombreComercial ?? "",
+            representanteLegalNombre: datos.expediente.representanteLegalNombre ?? "",
+            representanteLegalDni: datos.expediente.representanteLegalDni ?? "",
+            areaLocalM2: datos.expediente.areaLocalM2 ?? "",
+            horarioAtencion: datos.expediente.horarioAtencion ?? "",
             siguientePaso: pasoPorDefecto(datos.expediente),
           });
           setCargandoInicial(false);
@@ -90,12 +105,28 @@ export default function PasoDomicilio() {
       return;
     }
 
+    if (!/^\d{8}$/.test(representanteLegalDni)) {
+      setError("El DNI del representante legal debe tener 8 dígitos.");
+      return;
+    }
+
     setCargando(true);
 
     const respuesta = await fetch(`/api/solicitudes/${expedienteId}/domicilio`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ distrito, direccionLocal, giroActividad, emailContacto, telefonoContacto }),
+      body: JSON.stringify({
+        distrito,
+        direccionLocal,
+        giroActividad,
+        emailContacto,
+        telefonoContacto,
+        nombreComercial,
+        representanteLegalNombre,
+        representanteLegalDni,
+        areaLocalM2,
+        horarioAtencion,
+      }),
     });
 
     const datos = await respuesta.json();
@@ -138,6 +169,10 @@ export default function PasoDomicilio() {
                 <p><span className="font-medium">Distrito:</span> {domicilioBloqueado.distrito}</p>
                 <p><span className="font-medium">Dirección:</span> {domicilioBloqueado.direccionLocal}</p>
                 <p><span className="font-medium">Giro:</span> {domicilioBloqueado.giroActividad}</p>
+                <p><span className="font-medium">Nombre comercial:</span> {domicilioBloqueado.nombreComercial}</p>
+                <p><span className="font-medium">Representante legal:</span> {domicilioBloqueado.representanteLegalNombre} (DNI {domicilioBloqueado.representanteLegalDni})</p>
+                <p><span className="font-medium">Área del local:</span> {domicilioBloqueado.areaLocalM2} m²</p>
+                <p><span className="font-medium">Horario de atención:</span> {domicilioBloqueado.horarioAtencion}</p>
               </div>
               <Button
                 onClick={() => router.push(`/solicitud/${expedienteId}/${domicilioBloqueado.siguientePaso}`)}
@@ -212,6 +247,46 @@ export default function PasoDomicilio() {
                       onChange={(e) => setGiroOtro(e.target.value)}
                     />
                   )}
+
+                  <Input
+                    label="Nombre comercial del local"
+                    required
+                    value={nombreComercial}
+                    onChange={(e) => setNombreComercial(e.target.value)}
+                  />
+
+                  <Input
+                    label="Nombre del representante legal"
+                    required
+                    value={representanteLegalNombre}
+                    onChange={(e) => setRepresentanteLegalNombre(e.target.value)}
+                  />
+
+                  <Input
+                    label="DNI del representante legal"
+                    inputMode="numeric"
+                    maxLength={8}
+                    required
+                    value={representanteLegalDni}
+                    onChange={(e) => setRepresentanteLegalDni(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  />
+
+                  <Input
+                    label="Área del local (m²)"
+                    placeholder="25"
+                    inputMode="decimal"
+                    required
+                    value={areaLocalM2}
+                    onChange={(e) => setAreaLocalM2(e.target.value.replace(/[^\d.]/g, ""))}
+                  />
+
+                  <Input
+                    label="Horario de atención"
+                    placeholder="9:00 a 22:00 horas"
+                    required
+                    value={horarioAtencion}
+                    onChange={(e) => setHorarioAtencion(e.target.value)}
+                  />
 
                   <Input
                     label="Correo de contacto"

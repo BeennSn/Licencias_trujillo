@@ -35,3 +35,12 @@ export const TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS = [
 ] as const;
 
 export const TAMANO_MAXIMO_DOCUMENTO_BYTES = 10 * 1024 * 1024; // 10 MB
+
+// Texto fijo impreso en toda licencia emitida por el sistema (ver
+// lib/pdfLicencia.tsx), igual que ya se hace con la cita a la Ley N° 28976.
+// Si la municipalidad cambia de Sub Gerente o emite una nueva resolución/
+// ordenanza que reemplace a estas, se actualiza en un solo lugar.
+export const RESOLUCION_GERENCIAL_LICENCIA = "N° 1261-213-MPT-GDEL";
+export const ORDENANZA_MUNICIPAL_LICENCIA = "Nro. 014-2018-MPT";
+export const FIRMANTE_LICENCIA_NOMBRE = "Abog. Jackeline Bustamante Fernández";
+export const FIRMANTE_LICENCIA_CARGO = "Sub Gerente";

@@ -106,6 +106,13 @@ export const expedientes = pgTable("expedientes", {
   giroActividad: varchar("giro_actividad", { length: 255 }),
   emailContacto: varchar("email_contacto", { length: 255 }),
   telefonoContacto: varchar("telefono_contacto", { length: 30 }),
+  // Datos que solo se usan para imprimir la licencia (ver lib/pdfLicencia.tsx),
+  // no participan en ninguna regla de negocio del wizard.
+  nombreComercial: varchar("nombre_comercial", { length: 255 }),
+  representanteLegalNombre: varchar("representante_legal_nombre", { length: 255 }),
+  representanteLegalDni: varchar("representante_legal_dni", { length: 8 }),
+  areaLocalM2: varchar("area_local_m2", { length: 20 }),
+  horarioAtencion: varchar("horario_atencion", { length: 100 }),
   licenciaAnteriorId: uuid("licencia_anterior_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
