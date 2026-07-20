@@ -56,11 +56,9 @@ export default async function PaginaNegocio() {
           <p className="text-sm"><span className="font-medium">N°:</span> {licenciaVigente.numeroLicencia}</p>
           <p className="text-sm"><span className="font-medium">Vigente hasta:</span> {licenciaVigente.fechaVencimiento}</p>
           <div className="flex gap-3 pt-2">
-            {licenciaVigente.pdfUrl && (
-              <a href={licenciaVigente.pdfUrl} target="_blank" rel="noreferrer">
-                <Button variante="secundario">Descargar PDF</Button>
-              </a>
-            )}
+            <a href={`/api/licencias/${licenciaVigente.id}/pdf`} target="_blank" rel="noreferrer">
+              <Button variante="secundario">Descargar PDF</Button>
+            </a>
             <Link href="/negocio/reportar-cambio">
               <Button variante="secundario">Reportar cambio de infraestructura</Button>
             </Link>

@@ -1,7 +1,10 @@
 // Genera el PDF de la licencia de funcionamiento con @react-pdf/renderer.
-// Se genera una sola vez (cuando el inspector aprueba) y se sube a Vercel
-// Blob; el resto de las descargas reutilizan esa URL guardada en
-// licencias.pdf_url, sin volver a generar el archivo.
+// Se sube una copia a Vercel Blob al emitir/renovar (solo como respaldo de
+// auditoría); la descarga real del usuario pasa por
+// app/api/licencias/[id]/pdf, que llama a generarPdfLicencia() EN CADA
+// REQUEST para que la marca de agua "VENCIDA" siempre refleje el estado
+// actual (ver comentario ahí sobre por qué no se puede confiar en un PDF
+// estático una vez que la licencia puede vencer).
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
 
@@ -15,6 +18,18 @@ const estilos = StyleSheet.create({
   valor: { flex: 1 },
   qr: { width: 90, height: 90, alignSelf: "center", marginTop: 24 },
   piePagina: { marginTop: 32, fontSize: 8, color: "#777", textAlign: "center" },
+  marcaDeAgua: {
+    position: "absolute",
+    top: 320,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 90,
+    fontWeight: 700,
+    color: "#dc2626",
+    opacity: 0.35,
+    transform: "rotate(-35deg)",
+  },
 });
 
 export type DatosLicenciaPdf = {
@@ -30,10 +45,20 @@ export type DatosLicenciaPdf = {
   urlConsultaPublica: string;
 };
 
-function DocumentoLicencia({ datos, qrDataUrl }: { datos: DatosLicenciaPdf; qrDataUrl: string }) {
+function DocumentoLicencia({
+  datos,
+  qrDataUrl,
+  vencida,
+}: {
+  datos: DatosLicenciaPdf;
+  qrDataUrl: string;
+  vencida: boolean;
+}) {
   return (
     <Document>
       <Page size="A4" style={estilos.pagina}>
+        {vencida && <Text style={estilos.marcaDeAgua}>VENCIDA</Text>}
+
         <View style={estilos.encabezado}>
           <Text style={estilos.titulo}>Municipalidad Provincial de Trujillo</Text>
           <Text style={estilos.subtitulo}>Licencia de Funcionamiento Municipal</Text>
@@ -89,7 +114,7 @@ function DocumentoLicencia({ datos, qrDataUrl }: { datos: DatosLicenciaPdf; qrDa
   );
 }
 
-export async function generarPdfLicencia(datos: DatosLicenciaPdf): Promise<Buffer> {
+export async function generarPdfLicencia(datos: DatosLicenciaPdf, vencida: boolean = false): Promise<Buffer> {
   const qrDataUrl = await QRCode.toDataURL(datos.urlConsultaPublica);
-  return renderToBuffer(<DocumentoLicencia datos={datos} qrDataUrl={qrDataUrl} />);
+  return renderToBuffer(<DocumentoLicencia datos={datos} qrDataUrl={qrDataUrl} vencida={vencida} />);
 }

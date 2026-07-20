@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       ? {
           estado: licencia.estado,
           fechaVencimiento: licencia.fechaVencimiento,
-          pdfUrl: licencia.estado === "CLAUSURADA" ? null : licencia.pdfUrl,
+          pdfUrl: licencia.estado === "CLAUSURADA" ? null : `/api/licencias/${licencia.id}/pdf`,
         }
       : null,
   });
