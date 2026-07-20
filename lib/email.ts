@@ -123,6 +123,18 @@ export async function enviarCorreoRecordatorioInspeccionHoyInspector(
   );
 }
 
+// Aviso de que la licencia YA venció (distinto del recordatorio previo al
+// vencimiento). Se envía justo cuando el cron transiciona la licencia de
+// VIGENTE a VENCIDA (ver app/api/cron), no antes.
+export async function enviarCorreoLicenciaVencida(destinatario: string, razonSocial: string, numeroLicencia: string) {
+  await enviarCorreo(
+    destinatario,
+    `Tu licencia de funcionamiento venció - N° ${numeroLicencia}`,
+    `<p>La licencia de funcionamiento de <strong>${razonSocial}</strong> (N° ${numeroLicencia}) ya venció.</p>
+     <p>Inicia el trámite de renovación desde tu cuenta para regularizar tu situación.</p>`
+  );
+}
+
 // Recordatorio de renovación (ver app/api/cron): se envía una sola vez por
 // licencia, dentro de la ventana de estaPorVencer (30 días antes de vencer).
 export async function enviarCorreoRecordatorioRenovacion(

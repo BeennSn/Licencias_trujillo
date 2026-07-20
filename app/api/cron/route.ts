@@ -7,12 +7,15 @@ import {
   enviarCorreoRecordatorioRenovacion,
   enviarCorreoRecordatorioInspeccionHoy,
   enviarCorreoRecordatorioInspeccionHoyInspector,
+  enviarCorreoLicenciaVencida,
 } from "@/lib/email";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
 
 // Cron diario (ver vercel.json, se ejecuta 1 vez al día): (1) pasa a
 // VENCIDA cualquier licencia VIGENTE cuya fecha ya pasó, para que
-// listados/filtros administrativos reflejen el estado real; (2) envía el
+// listados/filtros administrativos reflejen el estado real, y le avisa al
+// negocio justo en ese momento (enviarCorreoLicenciaVencida, distinto del
+// recordatorio previo al vencimiento); (2) envía el
 // recordatorio de renovación a las que están por vencer (dentro de 30
 // días) y todavía no lo recibieron; (3) envía el recordatorio "hoy tienes
 // inspección" a negocio e inspector, para las inspecciones programadas
@@ -42,6 +45,17 @@ export async function GET(request: Request) {
       if (puedeTransicionarLicencia(licencia.estado, "VENCIDA")) {
         await db.update(licencias).set({ estado: "VENCIDA" }).where(eq(licencias.id, licencia.id));
         vencidas++;
+
+        const [expediente] = await db
+          .select()
+          .from(expedientes)
+          .where(eq(expedientes.id, licencia.expedienteId))
+          .limit(1);
+        const [negocio] = await db.select().from(negocios).where(eq(negocios.id, licencia.negocioId)).limit(1);
+
+        if (expediente?.emailContacto) {
+          await enviarCorreoLicenciaVencida(expediente.emailContacto, negocio?.razonSocial ?? "", licencia.numeroLicencia);
+        }
       }
       continue;
     }
