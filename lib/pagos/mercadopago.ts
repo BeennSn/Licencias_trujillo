@@ -109,18 +109,22 @@ export type ResultadoPreferencia =
 // su propia plataforma, eligiendo ahí tarjeta, Yape o PagoEfectivo. Nunca
 // se cobra en esta llamada — Mercado Pago avisa el resultado más tarde
 // (redirección de vuelta + webhook), nunca antes.
+//
+// Se usa tanto para el pago inicial del wizard (app/api/solicitudes/[id]/pago)
+// como para la renovación web (app/api/negocio/renovar); cada llamador arma
+// su propia urlResultado porque cada uno vuelve a una página distinta.
 export async function crearPreferenciaDeCobro(params: {
   expedienteId: string;
   email: string;
-  urlBase: string; // NEXT_PUBLIC_SITE_URL, sin barra final
+  urlResultado: string;
+  urlNotificacion: string;
 }): Promise<ResultadoPreferencia> {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!accessToken) {
     return { ok: false, motivo: "Mercado Pago no está configurado." };
   }
 
-  const { expedienteId, email, urlBase } = params;
-  const urlResultado = `${urlBase}/solicitud/${expedienteId}/pago/resultado`;
+  const { expedienteId, email, urlResultado, urlNotificacion } = params;
 
   const respuesta = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
@@ -149,7 +153,7 @@ export async function crearPreferenciaDeCobro(params: {
       back_urls: { success: urlResultado, failure: urlResultado, pending: urlResultado },
       auto_return: "approved",
       external_reference: expedienteId,
-      notification_url: `${urlBase}/api/webhooks/mercadopago`,
+      notification_url: urlNotificacion,
     }),
   });
 
@@ -160,4 +164,16 @@ export async function crearPreferenciaDeCobro(params: {
   }
 
   return { ok: true, initPoint: datos.init_point };
+}
+
+// Aproxima nuestro MedioPago interno a partir de lo que Mercado Pago
+// devuelve en un pago confirmado (usado al volver de Checkout Pro, ver
+// .../pago/confirmar). Mercado Pago no siempre distingue Yape de otras
+// billeteras digitales en payment_type_id, así que esto es best-effort:
+// solo afecta cómo se etiqueta el pago en los reportes, no si se aprueba.
+export function inferirMedioPagoDesdeMP(datosPago: { payment_type_id?: string }): MedioPago {
+  const tipo = datosPago.payment_type_id ?? "";
+  if (tipo === "credit_card" || tipo === "debit_card" || tipo === "prepaid_card") return "tarjeta";
+  if (tipo === "ticket") return "pagoefectivo";
+  return "yape";
 }

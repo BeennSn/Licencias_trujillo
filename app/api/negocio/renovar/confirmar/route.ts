@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
-import { completarPagoTramiteAprobado } from "@/lib/pagoAprobado";
+import { eq } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db/client";
+import { expedientes } from "@/lib/db/schema";
+import { completarRenovacionAprobada } from "@/lib/renovacion";
 import { inferirMedioPagoDesdeMP } from "@/lib/pagos/mercadopago";
 
 // Cuando el negocio vuelve de la plataforma de Mercado Pago (Checkout Pro,
-// ver .../pago), el frontend llama acá con el payment_id que viene en la
+// ver .../renovar), el frontend llama acá con el payment_id que viene en la
 // URL. Por seguridad, NUNCA se confía en el status que venga en la URL:
-// siempre se vuelve a consultar el pago con nuestro access token.
+// siempre se vuelve a consultar el pago con nuestro access token, y se
+// verifica que el expediente de renovación (external_reference) pertenezca
+// al negocio de la sesión actual.
+export async function POST(request: Request) {
+  const sesion = await auth();
+  if (!sesion?.user || sesion.user.rol !== "negocio") {
+    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+  }
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
   const { paymentId } = await request.json();
-
   if (!paymentId) {
     return NextResponse.json({ error: "Falta el identificador del pago." }, { status: 400 });
   }
@@ -29,9 +37,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const datosPago = await respuesta.json();
+  const expedienteId: string | undefined = datosPago.external_reference;
 
-  if (datosPago.external_reference !== id) {
-    return NextResponse.json({ error: "El pago no corresponde a este expediente." }, { status: 400 });
+  if (!expedienteId) {
+    return NextResponse.json({ error: "El pago no tiene un expediente asociado." }, { status: 400 });
+  }
+
+  const [expediente] = await db.select().from(expedientes).where(eq(expedientes.id, expedienteId)).limit(1);
+
+  if (!expediente || expediente.negocioId !== sesion.user.negocioId) {
+    return NextResponse.json({ error: "El pago no corresponde a tu cuenta." }, { status: 400 });
   }
 
   if (datosPago.status !== "approved") {
@@ -45,15 +60,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
   }
 
-  const completado = await completarPagoTramiteAprobado({
-    expedienteId: id,
+  const completado = await completarRenovacionAprobada({
+    expedienteId,
     medioPago: inferirMedioPagoDesdeMP(datosPago),
     referenciaPago: String(datosPago.id),
+    canal: "web",
+    emailNotificacion: sesion.user.email ?? "",
   });
 
   if (!completado.ok) {
     return NextResponse.json({ error: completado.error }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, pdfUrl: completado.pdfUrl, fechaVencimiento: completado.fechaVencimiento });
 }

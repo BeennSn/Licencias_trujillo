@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 
+const mercadoPagoConfigurado = Boolean(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY);
+
 function generarTokenDePrueba(medioPago: string) {
   return `token_test_${medioPago}_${Date.now()}`;
 }
@@ -20,7 +22,31 @@ export default function PaginaRenovar() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
-  async function renovar(evento: React.FormEvent) {
+  // Con Mercado Pago configurado: crea el expediente de renovación y
+  // redirige a su plataforma (Checkout Pro), donde el negocio elige
+  // tarjeta/Yape/PagoEfectivo. El resultado se confirma en .../renovar/resultado.
+  async function irAMercadoPago(evento: React.FormEvent) {
+    evento.preventDefault();
+    setError(null);
+    setCargando(true);
+
+    const respuesta = await fetch("/api/negocio/renovar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mismoLocal: true, email }),
+    });
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok || !datos.initPoint) {
+      setCargando(false);
+      setError(datos.error ?? "No se pudo iniciar el pago.");
+      return;
+    }
+
+    window.location.href = datos.initPoint;
+  }
+
+  async function renovarSimulado(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
     setCargando(true);
@@ -84,8 +110,25 @@ export default function PaginaRenovar() {
               <Button className="w-full">Iniciar trámite nuevo</Button>
             </Link>
           </div>
+        ) : mercadoPagoConfigurado ? (
+          <form onSubmit={irAMercadoPago} className="space-y-4">
+            <Input
+              label="Correo para el comprobante"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <Button type="submit" disabled={cargando} className="w-full">
+              {cargando ? "Redirigiendo..." : "Pagar con Mercado Pago"}
+            </Button>
+            <p className="text-xs text-gray-500 text-center">
+              Se abrirá la plataforma de Mercado Pago para elegir tarjeta, Yape o PagoEfectivo.
+            </p>
+          </form>
         ) : (
-          <form onSubmit={renovar} className="space-y-4">
+          <form onSubmit={renovarSimulado} className="space-y-4">
             <Select label="Medio de pago" value={medioPago} onChange={(e) => setMedioPago(e.target.value as "tarjeta" | "yape" | "pagoefectivo")}>
               <option value="tarjeta">Tarjeta de crédito/débito</option>
               <option value="yape">Yape</option>

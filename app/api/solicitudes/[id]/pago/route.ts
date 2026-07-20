@@ -43,7 +43,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     const urlBase = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
-    const preferencia = await crearPreferenciaDeCobro({ expedienteId: id, email: analisis.data.email, urlBase });
+    const preferencia = await crearPreferenciaDeCobro({
+      expedienteId: id,
+      email: analisis.data.email,
+      urlResultado: `${urlBase}/solicitud/${id}/pago/resultado`,
+      urlNotificacion: `${urlBase}/api/webhooks/mercadopago`,
+    });
 
     if (!preferencia.ok) {
       return NextResponse.json({ error: preferencia.motivo }, { status: 502 });
