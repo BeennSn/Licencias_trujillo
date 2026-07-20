@@ -97,7 +97,8 @@ export default async function PaginaNegocio() {
               {documentosActuales.map((doc) => (
                 <li key={doc.id}>
                   <a href={doc.urlArchivo} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                    {doc.tipo === "plano_local" ? "Plano del local" : doc.nombre}
+                    {doc.nombre}
+                    {doc.tipo === "plano_local" && <span className="text-xs text-gray-500"> (Plano del local)</span>}
                   </a>
                 </li>
               ))}

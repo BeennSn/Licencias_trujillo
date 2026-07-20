@@ -95,6 +95,19 @@ export default function PasoCuenta() {
               {cargando ? "Creando cuenta..." : "Crear cuenta y finalizar"}
             </Button>
           </form>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => router.push(`/solicitud/${expedienteId}/confirmacion`)}
+              className="text-sm text-gray-500 hover:underline"
+            >
+              Omitir por ahora
+            </button>
+            <p className="text-xs text-gray-400 mt-1">
+              Podrás consultar el estado de tu trámite con tu RUC sin necesidad de cuenta.
+            </p>
+          </div>
         </Card>
       </div>
     </main>

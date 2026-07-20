@@ -81,6 +81,10 @@ export const negocios = pgTable("negocios", {
   // última validación exitosa. Se usan para sugerir/autocompletar el
   // domicilio del local en el paso B del wizard (ver lib/sunat.ts).
   direccionesTrujillo: jsonb("direcciones_trujillo").$type<DireccionTrujillo[]>().notNull().default([]),
+  // Giro/actividad económica que SUNAT tiene registrada para el RUC,
+  // cacheado en la última validación exitosa. Se autocompleta en el paso B
+  // del wizard y ya no se pide a mano (ver lib/sunat.ts).
+  actividadEconomicaSunat: varchar("actividad_economica_sunat", { length: 500 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

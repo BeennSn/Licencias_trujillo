@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
-import { DISTRITOS_TRUJILLO, encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
-import { GIROS_ACTIVIDAD, GIRO_OTRO } from "@/lib/girosActividad";
+import { encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
 import { pasoPorDefecto } from "@/lib/wizardPasos";
 
 type DireccionSugerida = { distrito: string; direccion: string };
+
+const GIRO_NO_ESPECIFICADO = "No especificado por SUNAT";
 
 export default function PasoDomicilio() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
@@ -25,13 +25,16 @@ export default function PasoDomicilio() {
     siguientePaso: string;
   } | null>(null);
 
+  // Sin ninguna dirección de SUNAT no hay nada que ofrecer: ya no se acepta
+  // carga manual de domicilio (ver instrucción del cliente).
+  const [sinDireccionesSunat, setSinDireccionesSunat] = useState(false);
+
   const [sugerencias, setSugerencias] = useState<DireccionSugerida[]>([]);
-  const [direccionElegida, setDireccionElegida] = useState<number | "manual" | null>(null);
+  const [direccionElegida, setDireccionElegida] = useState<number | null>(null);
 
   const [distrito, setDistrito] = useState("");
   const [direccionLocal, setDireccionLocal] = useState("");
-  const [giroSeleccionado, setGiroSeleccionado] = useState("");
-  const [giroOtro, setGiroOtro] = useState("");
+  const [giroActividad, setGiroActividad] = useState("");
   const [emailContacto, setEmailContacto] = useState("");
   const [telefonoContacto, setTelefonoContacto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -59,10 +62,8 @@ export default function PasoDomicilio() {
 
         const lista: DireccionSugerida[] = datos.negocio?.direccionesTrujillo ?? [];
         setSugerencias(lista);
-        // Si no hay ninguna dirección registrada en SUNAT para este RUC en
-        // Trujillo (ej. local nuevo aún no registrado como anexo), se salta
-        // directo al formulario manual.
-        if (lista.length === 0) setDireccionElegida("manual");
+        setGiroActividad(datos.negocio?.actividadEconomicaSunat || GIRO_NO_ESPECIFICADO);
+        if (lista.length === 0) setSinDireccionesSunat(true);
         setCargandoInicial(false);
       });
   }, [expedienteId]);
@@ -74,21 +75,9 @@ export default function PasoDomicilio() {
     setDireccionLocal(sugerencia.direccion);
   }
 
-  function elegirManual() {
-    setDireccionElegida("manual");
-    setDistrito("");
-    setDireccionLocal("");
-  }
-
   async function manejarEnvio(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
-
-    const giroActividad = giroSeleccionado === GIRO_OTRO ? giroOtro.trim() : giroSeleccionado;
-    if (!giroActividad) {
-      setError("Indica el giro o actividad económica del negocio.");
-      return;
-    }
 
     if (!/^9\d{8}$/.test(telefonoContacto)) {
       setError("Ingresa un celular peruano válido: 9 dígitos, empieza con 9.");
@@ -151,9 +140,15 @@ export default function PasoDomicilio() {
                 Continuar
               </Button>
             </div>
+          ) : sinDireccionesSunat ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+              SUNAT no tiene ninguna dirección registrada en la Provincia de Trujillo para este RUC (ni domicilio
+              fiscal ni local anexo). Actualiza tu domicilio fiscal o registra el local como anexo ante SUNAT y
+              vuelve a intentarlo.
+            </p>
           ) : (
             <>
-              {sugerencias.length > 0 && direccionElegida === null && (
+              {direccionElegida === null && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-800">
                     SUNAT tiene estas direcciones registradas para tu RUC en Trujillo. Elige la que corresponde a
@@ -170,20 +165,13 @@ export default function PasoDomicilio() {
                         <span className="font-medium">{sugerencia.distrito}</span> — {sugerencia.direccion}
                       </button>
                     ))}
-                    <button
-                      type="button"
-                      onClick={elegirManual}
-                      className="w-full text-left border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-md px-3 py-2 text-sm text-gray-600"
-                    >
-                      Otra dirección (local nuevo, aún no registrado en SUNAT)
-                    </button>
                   </div>
                 </div>
               )}
 
               {direccionElegida !== null && (
                 <form onSubmit={manejarEnvio} className="space-y-4">
-                  {sugerencias.length > 0 && (
+                  {sugerencias.length > 1 && (
                     <button
                       type="button"
                       onClick={() => setDireccionElegida(null)}
@@ -193,48 +181,11 @@ export default function PasoDomicilio() {
                     </button>
                   )}
 
-                  <Select
-                    label="Distrito"
-                    required
-                    value={distrito}
-                    onChange={(e) => setDistrito(e.target.value)}
-                    disabled={direccionElegida !== "manual"}
-                  >
-                    <option value="">Selecciona un distrito</option>
-                    {DISTRITOS_TRUJILLO.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </Select>
+                  <Input label="Distrito" value={distrito} readOnly />
 
-                  <Input
-                    label="Dirección del local"
-                    required
-                    value={direccionLocal}
-                    onChange={(e) => setDireccionLocal(e.target.value)}
-                    readOnly={direccionElegida !== "manual"}
-                  />
+                  <Input label="Dirección del local" value={direccionLocal} readOnly />
 
-                  <Select
-                    label="Giro / actividad económica"
-                    required
-                    value={giroSeleccionado}
-                    onChange={(e) => setGiroSeleccionado(e.target.value)}
-                  >
-                    <option value="">Selecciona un giro</option>
-                    {GIROS_ACTIVIDAD.map((giro) => (
-                      <option key={giro} value={giro}>{giro}</option>
-                    ))}
-                    <option value={GIRO_OTRO}>Otro (especificar)</option>
-                  </Select>
-
-                  {giroSeleccionado === GIRO_OTRO && (
-                    <Input
-                      label="Especifica el giro"
-                      required
-                      value={giroOtro}
-                      onChange={(e) => setGiroOtro(e.target.value)}
-                    />
-                  )}
+                  <Input label="Giro / actividad económica (según SUNAT)" value={giroActividad} readOnly />
 
                   <Input
                     label="Correo de contacto"

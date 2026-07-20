@@ -8,7 +8,9 @@
 // Endpoint: GET {SUNAT_API_URL}?numero={ruc}  con  Authorization: Bearer {SUNAT_API_TOKEN}
 // Campos que usamos de la respuesta: razon_social, estado, condicion,
 // direccion, distrito, provincia, departamento, locales_anexos (cada uno
-// con su propia direccion/distrito/provincia/departamento).
+// con su propia direccion/distrito/provincia/departamento) y
+// actividad_economica (el giro del negocio: ya no se pide a mano, se toma
+// directo de acá, ver paso B del wizard).
 //
 // Antes de llamar al servicio, se corren validaciones locales (formato,
 // tipo de RUC, dígito verificador — ver lib/validacionRuc.ts). Si esas
@@ -30,6 +32,7 @@ type DatosUbicacionSunat = {
   provincia?: string;
   departamento?: string;
   locales_anexos?: LocalAnexoSunat[];
+  actividad_economica?: string;
 };
 
 function esUbicacionTrujillo(provincia?: string, departamento?: string): boolean {
@@ -88,6 +91,9 @@ export type ResultadoConsultaRuc =
       tienePresenciaEnTrujillo: boolean;
       direccionesTrujillo: DireccionTrujillo[];
       esValidoParaTramite: boolean;
+      // Giro/actividad económica que SUNAT tiene registrada para el RUC.
+      // Puede venir vacío si SUNAT no la tiene clasificada para este RUC.
+      actividadEconomica: string;
     }
   | {
       disponible: false;
@@ -151,6 +157,7 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
       tienePresenciaEnTrujillo: presenciaEnTrujillo,
       direccionesTrujillo: direccionesEnTrujillo(datos),
       esValidoParaTramite: estado === "ACTIVO" && condicion === "HABIDO" && presenciaEnTrujillo,
+      actividadEconomica: (datos.actividad_economica ?? "").toString().trim(),
     };
   } catch {
     return {

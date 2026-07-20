@@ -191,7 +191,11 @@ export default function PasoDocumentos() {
               {documentos.map((doc) => (
                 <li key={doc.id} className="flex justify-between items-center border rounded px-3 py-2">
                   <span>
-                    {doc.tipo === "plano_local" ? "Plano del local" : doc.nombre} · vigente hasta {doc.fechaVigencia}
+                    <span className="font-medium">{doc.nombre}</span>
+                    {doc.tipo === "plano_local" && (
+                      <span className="text-xs text-gray-500"> (Plano del local)</span>
+                    )}
+                    {" "}· vigente hasta {doc.fechaVigencia}
                   </span>
                   <span className="flex items-center gap-3">
                     <span className="text-green-700 text-xs font-semibold">Vigente</span>

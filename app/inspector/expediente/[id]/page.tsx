@@ -78,7 +78,8 @@ export default async function DetalleExpedienteInspector({
           {documentosDelExpediente.map((doc) => (
             <li key={doc.id} className="flex justify-between border rounded px-3 py-2">
               <a href={doc.urlArchivo} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                {doc.tipo === "plano_local" ? "Plano del local" : doc.nombre}
+                {doc.nombre}
+                {doc.tipo === "plano_local" && <span className="text-xs text-gray-500"> (Plano del local)</span>}
               </a>
               <span className="text-xs text-gray-500">Vigente hasta {doc.fechaVigencia}</span>
             </li>
