@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
-import { expedientes, inspecciones, negocios, licencias, usuarios } from "@/lib/db/schema";
+import { expedientes, inspecciones, negocios, licencias } from "@/lib/db/schema";
 import { esquemaDecisionInspeccion } from "@/lib/validaciones";
 import { puedeTransicionar } from "@/lib/estadosExpediente";
 import { programarSegundaInspeccion } from "@/lib/agenda";
@@ -12,7 +12,8 @@ import { generarPdfLicencia } from "@/lib/pdfLicencia";
 import { sumarAnios } from "@/lib/fechas";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
 import { VIGENCIA_LICENCIA_ANIOS } from "@/lib/constantes";
-import { enviarCorreoDecisionInspeccion, enviarCorreoInspeccionProgramada } from "@/lib/email";
+import { enviarCorreoDecisionInspeccion } from "@/lib/email";
+import { notificarInspeccionProgramada } from "@/lib/notificacionesInspeccion";
 
 // El inspector registra el resultado de una visita. Según la decisión:
 // - Conforme -> el expediente queda APROBADA y se emite la licencia (PDF + QR).
@@ -68,11 +69,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .where(eq(inspecciones.id, inspeccion.id));
 
   const [negocio] = await db.select().from(negocios).where(eq(negocios.id, expediente.negocioId)).limit(1);
-  const [cuentaNegocio] = await db
-    .select()
-    .from(usuarios)
-    .where(eq(usuarios.negocioId, expediente.negocioId))
-    .limit(1);
 
   if (decision === "conforme") {
     if (!puedeTransicionar(expediente.estado, "APROBADA")) {
@@ -113,8 +109,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     await db.update(expedientes).set({ estado: "APROBADA", updatedAt: new Date() }).where(eq(expedientes.id, expedienteId));
 
-    if (cuentaNegocio) {
-      await enviarCorreoDecisionInspeccion(cuentaNegocio.email, expediente.numeroExpediente ?? "", true);
+    if (expediente.emailContacto) {
+      await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", true);
     }
 
     return NextResponse.json({ ok: true, resultado: "aprobado", pdfUrl: blob.url });
@@ -133,15 +129,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .set({ estado: "SEGUNDA_INSPECCION_PROGRAMADA", updatedAt: new Date() })
       .where(eq(expedientes.id, expedienteId));
 
-    if (cuentaNegocio) {
-      await enviarCorreoDecisionInspeccion(cuentaNegocio.email, expediente.numeroExpediente ?? "", false, observaciones);
-      await enviarCorreoInspeccionProgramada(
-        cuentaNegocio.email,
-        expediente.numeroExpediente ?? "",
-        segundaInspeccion.fechaProgramada,
-        "segunda"
-      );
+    if (expediente.emailContacto) {
+      await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", false, observaciones);
     }
+    await notificarInspeccionProgramada({ inspeccion: segundaInspeccion, expediente });
 
     return NextResponse.json({
       ok: true,
@@ -159,8 +150,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   await db.update(expedientes).set({ estado: "RECHAZADA", updatedAt: new Date() }).where(eq(expedientes.id, expedienteId));
 
-  if (cuentaNegocio) {
-    await enviarCorreoDecisionInspeccion(cuentaNegocio.email, expediente.numeroExpediente ?? "", false, observaciones);
+  if (expediente.emailContacto) {
+    await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", false, observaciones);
   }
 
   return NextResponse.json({ ok: true, resultado: "rechazada" });

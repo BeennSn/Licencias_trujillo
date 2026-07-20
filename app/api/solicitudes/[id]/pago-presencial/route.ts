@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { expedientes, pagos } from "@/lib/db/schema";
 import { ESTADOS_QUE_PERMITEN_PAGAR, puedeTransicionar } from "@/lib/estadosExpediente";
 import { programarPrimeraInspeccion } from "@/lib/agenda";
+import { notificarInspeccionProgramada } from "@/lib/notificacionesInspeccion";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
 
@@ -59,6 +60,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     .update(expedientes)
     .set({ estado: "PRIMERA_INSPECCION_PROGRAMADA", updatedAt: new Date() })
     .where(eq(expedientes.id, id));
+
+  await notificarInspeccionProgramada({ inspeccion, expediente });
 
   return NextResponse.json({
     ok: true,

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { and, desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { expedientes, usuarios, inspecciones } from "@/lib/db/schema";
+import { expedientes, usuarios } from "@/lib/db/schema";
 import { esquemaCuenta } from "@/lib/validaciones";
 import { ESTADOS_SIN_PAGO_APROBADO } from "@/lib/estadosExpediente";
-import { enviarCorreoInspeccionProgramada } from "@/lib/email";
 
 // Paso E del wizard: crea la cuenta (correo + contraseña) que el negocio
 // usará de ahora en adelante para ver su expediente y renovar su licencia.
@@ -31,8 +30,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .from(usuarios)
     .where(eq(usuarios.negocioId, expediente.negocioId))
     .limit(1);
-
-  let correoDeNotificacion = cuentaExistente?.email;
 
   if (!cuentaExistente) {
     const cuerpo = await request.json();
@@ -63,25 +60,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       rol: "negocio",
       negocioId: expediente.negocioId,
     });
-
-    correoDeNotificacion = email;
   }
 
-  const [ultimaInspeccion] = await db
-    .select()
-    .from(inspecciones)
-    .where(and(eq(inspecciones.expedienteId, id), eq(inspecciones.tipo, "primera")))
-    .orderBy(desc(inspecciones.createdAt))
-    .limit(1);
-
-  if (correoDeNotificacion && ultimaInspeccion) {
-    await enviarCorreoInspeccionProgramada(
-      correoDeNotificacion,
-      expediente.numeroExpediente ?? "",
-      ultimaInspeccion.fechaProgramada,
-      "primera"
-    );
-  }
-
+  // La notificación de la inspección programada ya se envía al pagar (ver
+  // .../pago y .../pago-presencial), sin depender de que exista cuenta —
+  // por eso no se reenvía acá.
   return NextResponse.json({ ok: true, cuentaReutilizada: Boolean(cuentaExistente) });
 }

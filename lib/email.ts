@@ -25,18 +25,51 @@ export async function enviarCorreoRecuperacion(destinatario: string, enlace: str
   );
 }
 
+// horaTexto puede venir vacío (inspecciones antiguas sin hora asignada, ver
+// lib/db/schema.ts::inspecciones.horaProgramada) — en ese caso se omite del
+// correo en vez de mostrar "a las".
+function textoFechaHora(fechaIso: string, horaTexto: string): string {
+  return horaTexto ? `<strong>${fechaIso}</strong> a las <strong>${horaTexto}</strong>` : `<strong>${fechaIso}</strong>`;
+}
+
 export async function enviarCorreoInspeccionProgramada(
   destinatario: string,
   numeroExpediente: string,
   fechaIso: string,
+  horaTexto: string,
   tipo: "primera" | "segunda"
 ) {
   const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
   await enviarCorreo(
     destinatario,
     `Inspección técnica programada - Expediente ${numeroExpediente}`,
-    `<p>Se programó la ${etiquetaTipo} inspección técnica de tu local para el <strong>${fechaIso}</strong>.</p>
+    `<p>Se programó la ${etiquetaTipo} inspección técnica de tu local para el ${textoFechaHora(fechaIso, horaTexto)}.</p>
      <p>Puedes ver el detalle de tu expediente ingresando a tu cuenta.</p>`
+  );
+}
+
+// Igual que enviarCorreoInspeccionProgramada, pero dirigido al inspector
+// asignado (requisito: cada vez que se programa/reprograma una inspección,
+// tanto el negocio como el inspector deben recibir un correo con fecha,
+// hora y datos de la visita).
+export async function enviarCorreoInspeccionProgramadaInspector(
+  destinatario: string,
+  numeroExpediente: string,
+  razonSocial: string,
+  distrito: string,
+  direccionLocal: string,
+  fechaIso: string,
+  horaTexto: string,
+  tipo: "primera" | "segunda"
+) {
+  const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
+  await enviarCorreo(
+    destinatario,
+    `Inspección asignada - Expediente ${numeroExpediente}`,
+    `<p>Se te asignó la ${etiquetaTipo} inspección técnica de <strong>${razonSocial}</strong> para el ${textoFechaHora(fechaIso, horaTexto)}.</p>
+     <p><strong>Dirección:</strong> ${direccionLocal}, ${distrito}</p>
+     <p><strong>Expediente:</strong> ${numeroExpediente}</p>
+     <p>Revisa el detalle en tu panel de inspecciones.</p>`
   );
 }
 
