@@ -137,7 +137,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (expediente.emailContacto) {
       await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", false, observaciones);
     }
-    await notificarInspeccionProgramada({ inspeccion: segundaInspeccion, expediente });
+    // Reprogramación por observación: el profesor pidió que este aviso sea
+    // solo para el negocio, no para el inspector (ver lib/notificacionesInspeccion.ts).
+    await notificarInspeccionProgramada({ inspeccion: segundaInspeccion, expediente, notificarInspector: false });
 
     return NextResponse.json({
       ok: true,

@@ -1,9 +1,10 @@
-// Envía la notificación de inspección programada/reprogramada tanto al
-// negocio como al inspector asignado (requisito: cada vez que se agenda o
-// reagenda una visita, ambos deben enterarse por correo con fecha, hora y
-// datos de la visita). Se usa en los tres puntos donde se agenda una
-// inspección: pago web, pago presencial y la segunda inspección automática
-// tras observaciones en la primera visita.
+// Envía la notificación de inspección programada/reprogramada al negocio y,
+// opcionalmente, al inspector asignado. Se usa en los tres puntos donde se
+// agenda una inspección: pago web, pago presencial y la segunda inspección
+// automática tras observaciones en la primera visita. En este último caso
+// el profesor pidió explícitamente que la reprogramación se notifique solo
+// al negocio (el inspector se entera por su panel del día llegada la
+// fecha), por eso notificarInspector es un parámetro y no un valor fijo.
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { usuarios, inspecciones, expedientes, negocios } from "./db/schema";
@@ -12,8 +13,9 @@ import { enviarCorreoInspeccionProgramada, enviarCorreoInspeccionProgramadaInspe
 export async function notificarInspeccionProgramada(params: {
   inspeccion: typeof inspecciones.$inferSelect;
   expediente: typeof expedientes.$inferSelect;
+  notificarInspector?: boolean;
 }) {
-  const { inspeccion, expediente } = params;
+  const { inspeccion, expediente, notificarInspector = true } = params;
   const horaTexto = inspeccion.horaProgramada ?? "";
 
   if (expediente.emailContacto) {
@@ -25,6 +27,8 @@ export async function notificarInspeccionProgramada(params: {
       inspeccion.tipo
     );
   }
+
+  if (!notificarInspector) return;
 
   const [inspector] = await db.select().from(usuarios).where(eq(usuarios.id, inspeccion.inspectorId)).limit(1);
   if (!inspector) return;
