@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "db:push": "drizzle-kit push",
-    "seed": "tsx db/seed.ts"
+    "seed": "tsx db/seed.ts",
+    "db:reset": "tsx db/reset.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

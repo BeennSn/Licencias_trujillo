@@ -21,8 +21,7 @@ async function crearUsuarioSiNoExiste(email: string, password: string, rol: "adm
 
 async function main() {
   await crearUsuarioSiNoExiste("admin@licencias-trujillo.pe", "CambiarEsta123", "admin", "Administrador MPT");
-  await crearUsuarioSiNoExiste("inspector1@licencias-trujillo.pe", "CambiarEsta123", "inspector", "Inspector de Pruebas 1");
-  await crearUsuarioSiNoExiste("inspector2@licencias-trujillo.pe", "CambiarEsta123", "inspector", "Inspector de Pruebas 2");
+  await crearUsuarioSiNoExiste("inspector@licencias-trujillo.pe", "CambiarEsta123", "inspector", "Inspector Municipal");
   console.log("Listo. Cambia estas contraseñas apenas puedas.");
 }
 
