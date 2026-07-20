@@ -32,10 +32,16 @@ export default async function PaginaNegocio() {
       ])
     : [[], [], [], []];
 
-  const licenciaVigente = licenciasDelNegocio.find((l) => l.estado === "VIGENTE" || l.estado === "RENOVADA");
+  // La más reciente (licenciasDelNegocio ya viene ordenada desc por
+  // createdAt), sea cual sea su estado: si solo se mostrara cuando está
+  // VIGENTE/RENOVADA, una licencia VENCIDA (el cron diario, ver
+  // app/api/cron, sí llega a marcarlas así) desaparecería del todo del
+  // panel del negocio, junto con el botón para renovarla.
+  const licenciaVigente = licenciasDelNegocio[0];
   const hoy = aFechaIso(new Date());
   const puedeRenovar =
     licenciaVigente &&
+    licenciaVigente.estado !== "CLAUSURADA" &&
     (estaPorVencer(licenciaVigente.fechaVencimiento, hoy) || estaVencida(licenciaVigente.fechaVencimiento, hoy));
 
   return (
@@ -49,16 +55,26 @@ export default async function PaginaNegocio() {
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-800">Licencia de funcionamiento</h2>
-            <Badge tono={licenciaVigente.estado === "VIGENTE" || licenciaVigente.estado === "RENOVADA" ? "verde" : "rojo"}>
+            <Badge
+              tono={
+                licenciaVigente.estado === "VIGENTE" || licenciaVigente.estado === "RENOVADA"
+                  ? "verde"
+                  : licenciaVigente.estado === "VENCIDA"
+                    ? "amarillo"
+                    : "rojo"
+              }
+            >
               {licenciaVigente.estado}
             </Badge>
           </div>
           <p className="text-sm"><span className="font-medium">N°:</span> {licenciaVigente.numeroLicencia}</p>
           <p className="text-sm"><span className="font-medium">Vigente hasta:</span> {licenciaVigente.fechaVencimiento}</p>
           <div className="flex gap-3 pt-2">
-            <a href={`/api/licencias/${licenciaVigente.id}/pdf`} target="_blank" rel="noreferrer">
-              <Button variante="secundario">Descargar PDF</Button>
-            </a>
+            {licenciaVigente.estado !== "CLAUSURADA" && (
+              <a href={`/api/licencias/${licenciaVigente.id}/pdf`} target="_blank" rel="noreferrer">
+                <Button variante="secundario">Descargar PDF</Button>
+              </a>
+            )}
             <Link href="/negocio/reportar-cambio">
               <Button variante="secundario">Reportar cambio de infraestructura</Button>
             </Link>
