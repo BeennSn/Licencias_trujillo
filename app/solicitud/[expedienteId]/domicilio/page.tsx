@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
+import { GIROS_ACTIVIDAD, GIRO_OTRO } from "@/lib/girosActividad";
 import { pasoPorDefecto } from "@/lib/wizardPasos";
 
 type DireccionSugerida = { distrito: string; direccion: string };
-
-const GIRO_NO_ESPECIFICADO = "No especificado por SUNAT";
 
 export default function PasoDomicilio() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
@@ -34,7 +34,8 @@ export default function PasoDomicilio() {
 
   const [distrito, setDistrito] = useState("");
   const [direccionLocal, setDireccionLocal] = useState("");
-  const [giroActividad, setGiroActividad] = useState("");
+  const [giroSeleccionado, setGiroSeleccionado] = useState("");
+  const [giroOtro, setGiroOtro] = useState("");
   const [emailContacto, setEmailContacto] = useState("");
   const [telefonoContacto, setTelefonoContacto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +63,6 @@ export default function PasoDomicilio() {
 
         const lista: DireccionSugerida[] = datos.negocio?.direccionesTrujillo ?? [];
         setSugerencias(lista);
-        setGiroActividad(datos.negocio?.actividadEconomicaSunat || GIRO_NO_ESPECIFICADO);
         if (lista.length === 0) setSinDireccionesSunat(true);
         setCargandoInicial(false);
       });
@@ -78,6 +78,12 @@ export default function PasoDomicilio() {
   async function manejarEnvio(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
+
+    const giroActividad = giroSeleccionado === GIRO_OTRO ? giroOtro.trim() : giroSeleccionado;
+    if (!giroActividad) {
+      setError("Indica el giro o actividad económica del negocio.");
+      return;
+    }
 
     if (!/^9\d{8}$/.test(telefonoContacto)) {
       setError("Ingresa un celular peruano válido: 9 dígitos, empieza con 9.");
@@ -185,7 +191,27 @@ export default function PasoDomicilio() {
 
                   <Input label="Dirección del local" value={direccionLocal} readOnly />
 
-                  <Input label="Giro / actividad económica (según SUNAT)" value={giroActividad} readOnly />
+                  <Select
+                    label="Giro / actividad económica"
+                    required
+                    value={giroSeleccionado}
+                    onChange={(e) => setGiroSeleccionado(e.target.value)}
+                  >
+                    <option value="">Selecciona un giro</option>
+                    {GIROS_ACTIVIDAD.map((giro) => (
+                      <option key={giro} value={giro}>{giro}</option>
+                    ))}
+                    <option value={GIRO_OTRO}>Otro (especificar)</option>
+                  </Select>
+
+                  {giroSeleccionado === GIRO_OTRO && (
+                    <Input
+                      label="Especifica el giro"
+                      required
+                      value={giroOtro}
+                      onChange={(e) => setGiroOtro(e.target.value)}
+                    />
+                  )}
 
                   <Input
                     label="Correo de contacto"

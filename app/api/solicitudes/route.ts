@@ -31,7 +31,6 @@ export async function POST(request: Request) {
   let estadoSunat: string | undefined;
   let condicionHabido: string | undefined;
   let direccionesTrujillo: DireccionTrujillo[] | undefined;
-  let actividadEconomicaSunat: string | undefined;
 
   if (resultadoSunat.disponible) {
     if (!resultadoSunat.tienePresenciaEnTrujillo) {
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
     estadoSunat = resultadoSunat.estado;
     condicionHabido = resultadoSunat.condicion;
     direccionesTrujillo = resultadoSunat.direccionesTrujillo;
-    actividadEconomicaSunat = resultadoSunat.actividadEconomica || undefined;
   } else {
     if (resultadoSunat.bloqueante) {
       return NextResponse.json({ error: resultadoSunat.motivo }, { status: 400 });
@@ -72,21 +70,14 @@ export async function POST(request: Request) {
   if (!negocio) {
     [negocio] = await db
       .insert(negocios)
-      .values({
-        ruc,
-        razonSocial,
-        estadoSunat,
-        condicionHabido,
-        direccionesTrujillo: direccionesTrujillo ?? [],
-        actividadEconomicaSunat,
-      })
+      .values({ ruc, razonSocial, estadoSunat, condicionHabido, direccionesTrujillo: direccionesTrujillo ?? [] })
       .returning();
   } else if (direccionesTrujillo) {
-    // Refresca el caché de direcciones y giro con el dato más reciente de
-    // SUNAT (por si se registró un anexo nuevo desde la última consulta).
+    // Refresca el caché de direcciones con el dato más reciente de SUNAT
+    // (por si se registró un anexo nuevo desde la última consulta).
     [negocio] = await db
       .update(negocios)
-      .set({ direccionesTrujillo, actividadEconomicaSunat })
+      .set({ direccionesTrujillo })
       .where(eq(negocios.id, negocio.id))
       .returning();
   }
