@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { DireccionTrujillo } from "../sunat";
 
-export const rolUsuario = pgEnum("rol_usuario", ["negocio", "inspector", "admin"]);
+export const rolUsuario = pgEnum("rol_usuario", ["negocio", "inspector", "admin", "cajero"]);
 
 export const tipoExpediente = pgEnum("tipo_expediente", ["nueva", "renovacion"]);
 
@@ -35,8 +35,14 @@ export const tipoDocumento = pgEnum("tipo_documento", ["plano_local", "otro"]);
 export const estadoPago = pgEnum("estado_pago", ["pendiente", "aprobado", "rechazado"]);
 
 // Medios de pago habilitados por Mercado Pago Perú (verificar en el
-// dashboard de Mercado Pago cuáles están realmente activos para la cuenta).
-export const medioPago = pgEnum("medio_pago", ["tarjeta", "yape", "pagoefectivo"]);
+// dashboard de Mercado Pago cuáles están realmente activos para la cuenta),
+// más "efectivo" para pagos registrados presencialmente por un cajero (no
+// pasa por ninguna pasarela, se confirma directo en caja).
+export const medioPago = pgEnum("medio_pago", ["tarjeta", "yape", "pagoefectivo", "efectivo"]);
+
+// Por qué canal se originó el trámite/pago: autoservicio web o presencial en
+// caja (ver app/api/solicitudes/[id]/pago-presencial y lib/renovacion.ts).
+export const canalPago = pgEnum("canal_pago", ["web", "presencial"]);
 
 export const tipoInspeccion = pgEnum("tipo_inspeccion", ["primera", "segunda"]);
 
@@ -130,6 +136,9 @@ export const pagos = pgTable("pagos", {
   medioPago: medioPago("medio_pago").notNull(),
   estado: estadoPago("estado").notNull().default("pendiente"),
   referenciaPago: varchar("referencia_pago", { length: 255 }),
+  canal: canalPago("canal").notNull().default("web"),
+  // Solo se llena cuando canal="presencial": qué cajero registró el pago.
+  registradoPorId: uuid("registrado_por_id").references(() => usuarios.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -168,6 +177,9 @@ export const licencias = pgTable("licencias", {
   fechaVencimiento: date("fecha_vencimiento").notNull(),
   pdfUrl: text("pdf_url"),
   estado: estadoLicencia("estado").notNull().default("VIGENTE"),
+  // Evita reenviar el correo de recordatorio de renovación todos los días
+  // durante la ventana de 30 días antes del vencimiento (ver app/api/cron).
+  recordatorioRenovacionEnviado: boolean("recordatorio_renovacion_enviado").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
