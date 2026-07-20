@@ -83,6 +83,46 @@ export async function enviarCorreoInspeccionProgramadaInspector(
   );
 }
 
+// Recordatorio del MISMO DÍA de la inspección ("hoy tienes inspección"),
+// distinto de enviarCorreoInspeccionProgramada (que avisa al momento de
+// agendar, que puede ser semanas antes). Ver app/api/cron.
+export async function enviarCorreoRecordatorioInspeccionHoy(
+  destinatario: string,
+  numeroExpediente: string,
+  horaTexto: string,
+  tipo: "primera" | "segunda"
+) {
+  const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
+  await enviarCorreo(
+    destinatario,
+    `Hoy tienes inspección técnica - Expediente ${numeroExpediente}`,
+    `<p>Hoy es la fecha de tu ${etiquetaTipo} inspección técnica${horaTexto ? ` (a las <strong>${horaTexto}</strong>)` : ""}.</p>
+     <p>Un inspector municipal visitará tu local para verificar tu documentación.</p>`
+  );
+}
+
+// Igual que enviarCorreoRecordatorioInspeccionHoy, pero para el inspector
+// asignado.
+export async function enviarCorreoRecordatorioInspeccionHoyInspector(
+  destinatario: string,
+  numeroExpediente: string,
+  razonSocial: string,
+  distrito: string,
+  direccionLocal: string,
+  horaTexto: string,
+  tipo: "primera" | "segunda"
+) {
+  const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
+  await enviarCorreo(
+    destinatario,
+    `Hoy tienes una inspección pendiente - Expediente ${numeroExpediente}`,
+    `<p>Hoy debes cumplir con la ${etiquetaTipo} inspección técnica de <strong>${razonSocial}</strong>${horaTexto ? ` (a las <strong>${horaTexto}</strong>)` : ""}.</p>
+     <p><strong>Dirección:</strong> ${direccionLocal}, ${distrito}</p>
+     <p><strong>Expediente:</strong> ${numeroExpediente}</p>
+     <p>Revisa el detalle en tu panel de inspecciones.</p>`
+  );
+}
+
 // Recordatorio de renovación (ver app/api/cron): se envía una sola vez por
 // licencia, dentro de la ventana de estaPorVencer (30 días antes de vencer).
 export async function enviarCorreoRecordatorioRenovacion(

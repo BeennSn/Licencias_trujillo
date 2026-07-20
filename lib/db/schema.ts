@@ -167,6 +167,9 @@ export const inspecciones = pgTable("inspecciones", {
   estado: estadoInspeccion("estado").notNull().default("programada"),
   observaciones: text("observaciones"),
   fechaRealizada: date("fecha_realizada"),
+  // Evita reenviar el recordatorio "hoy tienes inspección" más de una vez
+  // si el cron corre más de una vez el mismo día (ver app/api/cron).
+  recordatorioDiaEnviado: boolean("recordatorio_dia_enviado").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
