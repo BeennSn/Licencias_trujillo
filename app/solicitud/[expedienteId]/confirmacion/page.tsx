@@ -61,6 +61,12 @@ export default async function PasoConfirmacion({
           </p>
 
           <div className="flex flex-col gap-2">
+            <Link
+              href={`/consulta?numeroExpediente=${expediente.numeroExpediente ?? ""}`}
+              className="text-blue-700 hover:underline text-sm"
+            >
+              Consultar el estado de mi trámite
+            </Link>
             <Link href="/login" className="text-blue-700 hover:underline text-sm">
               Ingresar a mi cuenta
             </Link>
