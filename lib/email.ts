@@ -73,6 +73,21 @@ export async function enviarCorreoInspeccionProgramadaInspector(
   );
 }
 
+// Recordatorio de renovación (ver app/api/cron): se envía una sola vez por
+// licencia, dentro de la ventana de estaPorVencer (30 días antes de vencer).
+export async function enviarCorreoRecordatorioRenovacion(
+  destinatario: string,
+  razonSocial: string,
+  fechaVencimiento: string
+) {
+  await enviarCorreo(
+    destinatario,
+    "Tu licencia de funcionamiento vence pronto",
+    `<p>La licencia de funcionamiento de <strong>${razonSocial}</strong> vence el <strong>${fechaVencimiento}</strong>.</p>
+     <p>Inicia el trámite de renovación desde tu cuenta antes de esa fecha para evitar que tu licencia quede marcada como vencida.</p>`
+  );
+}
+
 export async function enviarCorreoDecisionInspeccion(
   destinatario: string,
   numeroExpediente: string,
