@@ -5,12 +5,15 @@ import { db } from "@/lib/db/client";
 import { negocios, licencias, expedientes } from "@/lib/db/schema";
 import { ejecutarRenovacion } from "@/lib/renovacion";
 
+const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape"] as const;
+type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
+
 // Renovación presencial: el cajero busca el negocio por RUC y cobra en
-// efectivo en caja (sin pasarela). Misma regla de negocio y misma emisión
-// de licencia que la renovación web (ver lib/renovacion.ts): automática con
-// solo el pago, sin inspección, siempre que sea el mismo local — por eso no
-// se pide "mismo local" acá tampoco, ya que en caja el negocio se presenta
-// físicamente a renovar su local existente.
+// ventanilla (efectivo, tarjeta o Yape/Plin con QR de monto fijo). Misma
+// regla de negocio y misma emisión de licencia que la renovación web (ver
+// lib/renovacion.ts): automática con solo el pago, sin inspección, siempre
+// que sea el mismo local — por eso no se pide "mismo local" acá tampoco, ya
+// que en caja el negocio se presenta físicamente a renovar su local existente.
 export async function POST(request: Request) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "cajero") {
@@ -21,6 +24,18 @@ export async function POST(request: Request) {
   const ruc = typeof cuerpo.ruc === "string" ? cuerpo.ruc.trim() : "";
   if (!/^\d{11}$/.test(ruc)) {
     return NextResponse.json({ error: "El RUC debe tener 11 dígitos." }, { status: 400 });
+  }
+
+  const medioPago: MedioPagoPresencial = MEDIOS_PAGO_PRESENCIAL.includes(cuerpo.medioPago)
+    ? cuerpo.medioPago
+    : "efectivo";
+  const numeroOperacion: string | undefined =
+    typeof cuerpo.numeroOperacion === "string" && cuerpo.numeroOperacion.trim()
+      ? cuerpo.numeroOperacion.trim()
+      : undefined;
+
+  if (medioPago !== "efectivo" && !numeroOperacion) {
+    return NextResponse.json({ error: "Falta el número de operación del pago." }, { status: 400 });
   }
 
   const [negocio] = await db.select().from(negocios).where(eq(negocios.ruc, ruc)).limit(1);
@@ -55,11 +70,14 @@ export async function POST(request: Request) {
 
   const resultado = await ejecutarRenovacion({
     negocioId: negocio.id,
-    medioPago: "efectivo",
+    medioPago,
     canal: "presencial",
     registradoPorId: sesion.user.id,
     emailNotificacion,
-    resolverPago: async () => ({ aprobado: true, referencia: `caja_${sesion.user.id}_${Date.now()}` }),
+    resolverPago: async () => ({
+      aprobado: true,
+      referencia: numeroOperacion ?? `caja_${sesion.user.id}_${Date.now()}`,
+    }),
   });
 
   if (!resultado.ok) {

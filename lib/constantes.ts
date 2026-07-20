@@ -12,6 +12,16 @@ export const MONTO_TRAMITE_SOLES = 180;
 // cobrarDerechoDeTramite().
 export const MONTO_TRAMITE_COBRO_REAL_SOLES = 1.8;
 
+// QR de Yape/Plin con monto fijo para cobro presencial en caja (ver
+// app/solicitud/[expedienteId]/pago-presencial y app/cajero/renovar). Se
+// genera desde la propia app personal de Yape o Plin (botón "Cobrar",
+// ingresando el monto), no requiere cuenta empresarial ni API — pero por
+// eso mismo el monto queda fijo en la imagen: si cambia
+// MONTO_TRAMITE_COBRO_REAL_SOLES, hay que generar y reemplazar el archivo
+// de nuevo. Colocar la imagen en public/qr-yape-plin.png (mismo patrón que
+// el logo de la municipalidad en public/logo-mpt.png).
+export const QR_YAPE_PLIN_IMAGEN = "/qr-yape-plin.png";
+
 export const DIAS_HABILES_SEGUNDA_INSPECCION = 30;
 
 export const VIGENCIA_LICENCIA_ANIOS = 1;

@@ -9,14 +9,31 @@ import { notificarInspeccionProgramada } from "@/lib/notificacionesInspeccion";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
 
+const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape"] as const;
+type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
+
 // Variante presencial del paso D del wizard (ver también .../pago): un
-// cajero cobra el derecho de trámite en efectivo en ventanilla y confirma
-// el pago directo, sin pasarela. El resto es idéntico al pago web: agenda
-// la primera inspección lo antes posible.
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+// cajero cobra el derecho de trámite en ventanilla (efectivo, tarjeta o
+// Yape/Plin con QR de monto fijo) y confirma el pago directo, sin pasarela.
+// El resto es idéntico al pago web: agenda la primera inspección lo antes
+// posible.
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "cajero") {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+  }
+
+  const cuerpo = await request.json().catch(() => ({}));
+  const medioPago: MedioPagoPresencial = MEDIOS_PAGO_PRESENCIAL.includes(cuerpo.medioPago)
+    ? cuerpo.medioPago
+    : "efectivo";
+  const numeroOperacion: string | undefined =
+    typeof cuerpo.numeroOperacion === "string" && cuerpo.numeroOperacion.trim()
+      ? cuerpo.numeroOperacion.trim()
+      : undefined;
+
+  if (medioPago !== "efectivo" && !numeroOperacion) {
+    return NextResponse.json({ error: "Falta el número de operación del pago." }, { status: 400 });
   }
 
   const { id } = await params;
@@ -42,9 +59,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     .values({
       expedienteId: id,
       monto: MONTO_TRAMITE_SOLES.toFixed(2),
-      medioPago: "efectivo",
+      medioPago,
       estado: "aprobado",
-      referenciaPago: `caja_${sesion.user.id}_${Date.now()}`,
+      referenciaPago: numeroOperacion ?? `caja_${sesion.user.id}_${Date.now()}`,
       canal: "presencial",
       registradoPorId: sesion.user.id,
     })

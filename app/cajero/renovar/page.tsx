@@ -1,15 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
+import { Select } from "@/components/ui/Select";
+import { MONTO_TRAMITE_SOLES, MONTO_TRAMITE_COBRO_REAL_SOLES, QR_YAPE_PLIN_IMAGEN } from "@/lib/constantes";
+
+type MedioPagoPresencial = "efectivo" | "tarjeta" | "yape";
 
 type ResultadoRenovacion = { razonSocial: string; pdfUrl: string | null; fechaVencimiento: string };
 
 export default function PaginaCajeroRenovar() {
   const [ruc, setRuc] = useState("");
+  const [medioPago, setMedioPago] = useState<MedioPagoPresencial>("efectivo");
+  const [numeroOperacion, setNumeroOperacion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoRenovacion | null>(null);
@@ -17,12 +23,18 @@ export default function PaginaCajeroRenovar() {
   async function confirmarRenovacion(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
+
+    if (medioPago !== "efectivo" && !numeroOperacion.trim()) {
+      setError("Ingresa el número de operación para dejar constancia del cobro.");
+      return;
+    }
+
     setCargando(true);
 
     const respuesta = await fetch("/api/cajero/renovar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ruc }),
+      body: JSON.stringify({ ruc, medioPago, numeroOperacion: numeroOperacion.trim() || undefined }),
     });
     const datos = await respuesta.json();
     setCargando(false);
@@ -52,6 +64,8 @@ export default function PaginaCajeroRenovar() {
             onClick={() => {
               setResultado(null);
               setRuc("");
+              setMedioPago("efectivo");
+              setNumeroOperacion("");
             }}
             className="w-full"
           >
@@ -67,7 +81,7 @@ export default function PaginaCajeroRenovar() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Renovar licencia</h1>
         <p className="text-gray-500 text-sm">
-          Busca al negocio por RUC y cobra en efectivo el derecho de trámite (S/ {MONTO_TRAMITE_SOLES.toFixed(2)}).
+          Busca al negocio por RUC y cobra en ventanilla el derecho de trámite (S/ {MONTO_TRAMITE_SOLES.toFixed(2)}).
         </p>
       </div>
 
@@ -81,9 +95,47 @@ export default function PaginaCajeroRenovar() {
             value={ruc}
             onChange={(e) => setRuc(e.target.value.replace(/\D/g, "").slice(0, 11))}
           />
+
+          <Select
+            label="Método de pago"
+            value={medioPago}
+            onChange={(e) => setMedioPago(e.target.value as MedioPagoPresencial)}
+          >
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta (POS)</option>
+            <option value="yape">Yape / Plin (QR)</option>
+          </Select>
+
+          {medioPago === "yape" && (
+            <div className="rounded-md border border-gray-200 p-4 space-y-3 text-center">
+              <Image
+                src={QR_YAPE_PLIN_IMAGEN}
+                alt="QR Yape/Plin con monto fijo"
+                width={220}
+                height={220}
+                className="mx-auto"
+              />
+              <p className="text-sm text-gray-600">
+                Monto fijo del QR: <strong>S/ {MONTO_TRAMITE_COBRO_REAL_SOLES.toFixed(2)}</strong> (modo prueba)
+              </p>
+              <p className="text-xs text-gray-400">
+                Verifica en tu app que el pago llegó antes de confirmar.
+              </p>
+            </div>
+          )}
+
+          {medioPago !== "efectivo" && (
+            <Input
+              label="Número de operación"
+              placeholder={medioPago === "yape" ? "Ej. 000123456" : "Ej. últimos 4 dígitos de la tarjeta"}
+              value={numeroOperacion}
+              onChange={(e) => setNumeroOperacion(e.target.value)}
+            />
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={cargando || ruc.length !== 11} className="w-full">
-            {cargando ? "Registrando..." : `Confirmar pago en efectivo S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}`}
+            {cargando ? "Registrando..." : `Confirmar pago S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}`}
           </Button>
         </form>
       </Card>

@@ -3,11 +3,16 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
-import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
+import { MONTO_TRAMITE_SOLES, MONTO_TRAMITE_COBRO_REAL_SOLES, QR_YAPE_PLIN_IMAGEN } from "@/lib/constantes";
 import { pasoPorDefecto, puedeVerPago } from "@/lib/wizardPasos";
+
+type MedioPagoPresencial = "efectivo" | "tarjeta" | "yape";
 
 type ExpedienteResumen = {
   numeroExpediente: string;
@@ -26,6 +31,8 @@ export default function PasoPagoPresencial() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
+  const [medioPago, setMedioPago] = useState<MedioPagoPresencial>("efectivo");
+  const [numeroOperacion, setNumeroOperacion] = useState("");
 
   useEffect(() => {
     if (estadoSesion === "loading") return;
@@ -49,9 +56,19 @@ export default function PasoPagoPresencial() {
 
   async function confirmarPago() {
     setError(null);
+
+    if (medioPago !== "efectivo" && !numeroOperacion.trim()) {
+      setError("Ingresa el número de operación para dejar constancia del cobro.");
+      return;
+    }
+
     setCargando(true);
 
-    const respuesta = await fetch(`/api/solicitudes/${expedienteId}/pago-presencial`, { method: "POST" });
+    const respuesta = await fetch(`/api/solicitudes/${expedienteId}/pago-presencial`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ medioPago, numeroOperacion: numeroOperacion.trim() || undefined }),
+    });
     const datos = await respuesta.json();
     setCargando(false);
 
@@ -77,9 +94,9 @@ export default function PasoPagoPresencial() {
         <StepIndicator pasoActual={4} />
         <Card className="space-y-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Pago presencial en efectivo</h1>
+            <h1 className="text-xl font-bold text-gray-900">Pago presencial</h1>
             <p className="text-sm text-gray-500">
-              Cobra el derecho de trámite en efectivo y confirma para programar la inspección.
+              Cobra el derecho de trámite en ventanilla y confirma para programar la inspección.
             </p>
           </div>
 
@@ -89,10 +106,47 @@ export default function PasoPagoPresencial() {
             <p><span className="font-medium">Dirección:</span> {expediente.direccionLocal}</p>
           </div>
 
+          <Select
+            label="Método de pago"
+            value={medioPago}
+            onChange={(e) => setMedioPago(e.target.value as MedioPagoPresencial)}
+          >
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta (POS)</option>
+            <option value="yape">Yape / Plin (QR)</option>
+          </Select>
+
+          {medioPago === "yape" && (
+            <div className="rounded-md border border-gray-200 p-4 space-y-3 text-center">
+              <Image
+                src={QR_YAPE_PLIN_IMAGEN}
+                alt="QR Yape/Plin con monto fijo"
+                width={220}
+                height={220}
+                className="mx-auto"
+              />
+              <p className="text-sm text-gray-600">
+                Monto fijo del QR: <strong>S/ {MONTO_TRAMITE_COBRO_REAL_SOLES.toFixed(2)}</strong> (modo prueba)
+              </p>
+              <p className="text-xs text-gray-400">
+                Verifica en tu app que el pago llegó antes de confirmar.
+              </p>
+            </div>
+          )}
+
+          {medioPago !== "efectivo" && (
+            <Input
+              label="Número de operación"
+              placeholder={medioPago === "yape" ? "Ej. 000123456" : "Ej. últimos 4 dígitos de la tarjeta"}
+              value={numeroOperacion}
+              onChange={(e) => setNumeroOperacion(e.target.value)}
+            />
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <Button onClick={confirmarPago} disabled={cargando} className="w-full">
-            {cargando ? "Registrando pago..." : `Confirmar pago en efectivo S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}`}
+            {cargando ? "Registrando pago..." : `Confirmar pago S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}`}
           </Button>
         </Card>
       </div>
