@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
 import { pasoPorDefecto, puedeVerDocumentos } from "@/lib/wizardPasos";
+import type { EstadoExpediente } from "@/lib/estadosExpediente";
 
 type Documento = {
   id: string;
@@ -37,6 +38,7 @@ export default function PasoDocumentos() {
   const [cargando, setCargando] = useState(false);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
+  const [estadoExpediente, setEstadoExpediente] = useState<EstadoExpediente | null>(null);
 
   useEffect(() => {
     if (estadoSesion === "loading") return;
@@ -50,6 +52,7 @@ export default function PasoDocumentos() {
           router.replace(`/solicitud/${expedienteId}/${pasoPorDefecto(datos.expediente, pasoDePago)}`);
           return;
         }
+        setEstadoExpediente(datos.expediente.estado);
         setVerificandoAcceso(false);
       });
 
@@ -59,6 +62,12 @@ export default function PasoDocumentos() {
   }, [expedienteId, router, estadoSesion, pasoDePago]);
 
   const tienePlanoValido = documentos.some((d) => d.tipo === "plano_local" && !d.enTramite);
+  // Corrección de documentos entre la 1ra y la 2da inspección (ver
+  // lib/estadosExpediente.ts): el pago ya está hecho, así que acá no hay
+  // "siguiente paso" del wizard al que avanzar — solo se guarda el cambio y
+  // se vuelve al panel desde donde se accedió.
+  const corrigiendoEntreInspecciones = estadoExpediente === "SEGUNDA_INSPECCION_PROGRAMADA";
+  const panelDeRetorno = sesion?.user?.rol === "cajero" ? "/cajero" : "/negocio";
 
   if (verificandoAcceso) {
     return (
@@ -148,10 +157,15 @@ export default function PasoDocumentos() {
         <StepIndicator pasoActual={3} />
         <Card className="space-y-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Documentos del local</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              {corrigiendoEntreInspecciones ? "Corregir documentos observados" : "Documentos del local"}
+            </h1>
             <p className="text-sm text-gray-500">
-              El plano del local es obligatorio. Todos los documentos deben estar <strong>vigentes</strong> (fecha
-              futura) y <strong>no encontrarse en trámite</strong>.
+              {corrigiendoEntreInspecciones
+                ? "Reemplaza o agrega los documentos que el inspector observó en la primera visita, antes de la segunda inspección."
+                : "El plano del local es obligatorio."}{" "}
+              Todos los documentos deben estar <strong>vigentes</strong> (fecha futura) y{" "}
+              <strong>no encontrarse en trámite</strong>.
             </p>
           </div>
 
@@ -221,11 +235,15 @@ export default function PasoDocumentos() {
           </div>
 
           <Button
-            onClick={() => router.push(`/solicitud/${expedienteId}/${pasoDePago}`)}
+            onClick={() =>
+              router.push(
+                corrigiendoEntreInspecciones ? panelDeRetorno : `/solicitud/${expedienteId}/${pasoDePago}`
+              )
+            }
             disabled={!tienePlanoValido}
             className="w-full"
           >
-            Continuar al pago
+            {corrigiendoEntreInspecciones ? "Guardar y volver" : "Continuar al pago"}
           </Button>
           {!tienePlanoValido && (
             <p className="text-xs text-gray-500 text-center">
