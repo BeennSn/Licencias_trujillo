@@ -31,8 +31,14 @@ export function puedeTransicionar(actual: EstadoExpediente, siguiente: EstadoExp
 
 // Estados en los que todavía se pueden subir/eliminar documentos (paso C).
 // Una vez que el pago arrancó (PAGO_PENDIENTE en adelante) los documentos ya
-// no se tocan por esta vía.
-export const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: EstadoExpediente[] = ["BORRADOR", "DOCUMENTOS_COMPLETOS"];
+// no se tocan por esta vía. SEGUNDA_INSPECCION_PROGRAMADA es la excepción:
+// el profesor pidió que el negocio pueda corregir/volver a presentar los
+// documentos que le faltaron entre la 1ra y la 2da inspección.
+export const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: EstadoExpediente[] = [
+  "BORRADOR",
+  "DOCUMENTOS_COMPLETOS",
+  "SEGUNDA_INSPECCION_PROGRAMADA",
+];
 
 // Estados en los que el pago (paso D) todavía no quedó aprobado. Se usa para
 // impedir que se salten pasos por URL directa (ej. crear la cuenta del paso

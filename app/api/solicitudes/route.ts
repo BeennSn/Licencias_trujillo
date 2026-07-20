@@ -98,10 +98,13 @@ export async function POST(request: Request) {
     // registrar" el mismo RUC en el wizard: ya no hay nada que completar
     // ahí, el negocio debe entrar con su cuenta a ver el estado. Solo se
     // permite retomar el wizard mientras sigue en pasos previos al pago.
+    // SEGUNDA_INSPECCION_PROGRAMADA NO bloquea: el profesor pidió que el
+    // negocio (o el cajero) pueda volver a entrar con el mismo RUC en esta
+    // etapa para corregir/reemplazar los documentos observados antes de la
+    // 2da inspección (ver ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS).
     const ESTADOS_QUE_BLOQUEAN_REINGRESO: typeof expedienteEnTramite.estado[] = [
       "PAGO_APROBADO",
       "PRIMERA_INSPECCION_PROGRAMADA",
-      "SEGUNDA_INSPECCION_PROGRAMADA",
     ];
 
     if (ESTADOS_QUE_BLOQUEAN_REINGRESO.includes(expedienteEnTramite.estado)) {

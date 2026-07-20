@@ -105,6 +105,12 @@ export default async function PaginaNegocio() {
             <p><span className="font-medium">Dirección:</span> {expedienteActual.direccionLocal}</p>
           </div>
 
+          {expedienteActual.estado === "SEGUNDA_INSPECCION_PROGRAMADA" && (
+            <Link href={`/solicitud/${expedienteActual.id}/documentos`}>
+              <Button variante="secundario">Corregir documentos observados</Button>
+            </Link>
+          )}
+
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-1">Documentos</h3>
             <ul className="text-sm space-y-1">
