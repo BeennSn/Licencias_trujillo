@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -10,17 +11,12 @@ import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { pasoPorDefecto, puedeVerPago } from "@/lib/wizardPasos";
 
-// NOTA PARA EL EQUIPO: cuando tengan su cuenta de Mercado Pago
-// (NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY configurada), reemplacen
-// generarTokenDePrueba() por el Card Payment Brick real de Mercado Pago
-// (https://www.mercadopago.com.pe/developers/es/docs/checkout-api/integration-configuration/card/integrate-via-cardform),
-// que entrega un token real de tarjeta para enviar al backend. Yape y
-// PagoEfectivo no usan token de tarjeta (se envían directo por
-// payment_method_id, ver lib/pagos/mercadopago.ts). Mientras tanto, este
-// formulario simula el checkout para no bloquear el resto del flujo.
-//
-// OJO: si usan su access token de PRODUCCIÓN en el backend, esto cobra de
-// verdad. Para desarrollo/demo usen credenciales de prueba de Mercado Pago.
+const CLAVE_PUBLICA_MP = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+
+// Yape y PagoEfectivo no usan token de tarjeta (se envían directo por
+// payment_method_id, ver lib/pagos/mercadopago.ts) y tarjeta cuando Mercado
+// Pago todavía no está configurado (desarrollo/demo) siguen simulados con
+// un token falso, para no bloquear el resto del flujo sin credenciales.
 function generarTokenDePrueba(medioPago: string, simularRechazo: boolean) {
   const prefijo = simularRechazo ? "token_test_fail" : `token_test_${medioPago}`;
   return `${prefijo}_${Date.now()}`;
@@ -37,7 +33,16 @@ export default function PasoPago() {
   const [cargando, setCargando] = useState(false);
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
-  const mercadoPagoConfigurado = Boolean(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY);
+  const mercadoPagoConfigurado = Boolean(CLAVE_PUBLICA_MP);
+  // Con tarjeta y Mercado Pago configurado, el Card Payment Brick reemplaza
+  // el formulario simple: tokeniza la tarjeta de verdad en el navegador
+  // (nunca toca nuestro backend), algo que un formulario propio no puede
+  // hacer sin perder el cumplimiento PCI DSS.
+  const usarBrickDeTarjeta = mercadoPagoConfigurado && medioPago === "tarjeta";
+
+  useEffect(() => {
+    if (CLAVE_PUBLICA_MP) initMercadoPago(CLAVE_PUBLICA_MP, { locale: "es-PE" });
+  }, []);
 
   useEffect(() => {
     fetch(`/api/solicitudes/${expedienteId}`)
@@ -53,28 +58,37 @@ export default function PasoPago() {
       });
   }, [expedienteId, router]);
 
-  async function pagar(evento: React.FormEvent) {
-    evento.preventDefault();
+  async function confirmarPago(cuerpo: {
+    tokenPago: string;
+    email: string;
+    paymentMethodId?: string;
+    issuerId?: string;
+  }) {
     setError(null);
     setCargando(true);
-
-    const tokenPago = generarTokenDePrueba(medioPago, simularRechazo);
 
     const respuesta = await fetch(`/api/solicitudes/${expedienteId}/pago`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ medioPago, tokenPago, email }),
+      body: JSON.stringify({ medioPago, ...cuerpo }),
     });
 
     const datos = await respuesta.json();
     setCargando(false);
 
     if (!respuesta.ok) {
-      setError(datos.motivo ?? datos.error ?? "El pago no pudo procesarse.");
-      return;
+      const mensaje = datos.motivo ?? datos.error ?? "El pago no pudo procesarse.";
+      setError(mensaje);
+      throw new Error(mensaje);
     }
 
     router.push(`/solicitud/${expedienteId}/cuenta`);
+  }
+
+  async function pagarSimulado(evento: React.FormEvent) {
+    evento.preventDefault();
+    const tokenPago = generarTokenDePrueba(medioPago, simularRechazo);
+    await confirmarPago({ tokenPago, email }).catch(() => {});
   }
 
   if (verificandoAcceso) {
@@ -103,42 +117,61 @@ export default function PasoPago() {
             )}
           </div>
 
-          <form onSubmit={pagar} className="space-y-4">
-            <Select
-              label="Medio de pago"
-              value={medioPago}
-              onChange={(e) => setMedioPago(e.target.value as "tarjeta" | "yape" | "pagoefectivo")}
-            >
-              <option value="tarjeta">Tarjeta de crédito/débito</option>
-              <option value="yape">Yape</option>
-              <option value="pagoefectivo">PagoEfectivo</option>
-            </Select>
+          <Select
+            label="Medio de pago"
+            value={medioPago}
+            onChange={(e) => setMedioPago(e.target.value as "tarjeta" | "yape" | "pagoefectivo")}
+          >
+            <option value="tarjeta">Tarjeta de crédito/débito</option>
+            <option value="yape">Yape</option>
+            <option value="pagoefectivo">PagoEfectivo</option>
+          </Select>
 
-            <Input
-              label="Correo para el comprobante de pago"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          {usarBrickDeTarjeta ? (
+            <div className="space-y-3">
+              <CardPayment
+                initialization={{ amount: MONTO_TRAMITE_SOLES, payer: { email: email || undefined } }}
+                customization={{ paymentMethods: { minInstallments: 1, maxInstallments: 1 } }}
+                onSubmit={async (formData) => {
+                  await confirmarPago({
+                    tokenPago: formData.token,
+                    email: formData.payer.email ?? email,
+                    paymentMethodId: formData.payment_method_id,
+                    issuerId: formData.issuer_id,
+                  });
+                }}
+                onError={(err) => setError(err.message || "Ocurrió un error con el formulario de pago.")}
+              />
+              {error && <p className="text-sm text-red-600">{error}</p>}
+            </div>
+          ) : (
+            <form onSubmit={pagarSimulado} className="space-y-4">
+              <Input
+                label="Correo para el comprobante de pago"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-            {!mercadoPagoConfigurado && (
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={simularRechazo}
-                  onChange={(e) => setSimularRechazo(e.target.checked)}
-                />
-                Simular pago rechazado (solo para pruebas)
-              </label>
-            )}
+              {!mercadoPagoConfigurado && (
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={simularRechazo}
+                    onChange={(e) => setSimularRechazo(e.target.checked)}
+                  />
+                  Simular pago rechazado (solo para pruebas)
+                </label>
+              )}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && <p className="text-sm text-red-600">{error}</p>}
 
-            <Button type="submit" disabled={cargando} className="w-full">
-              {cargando ? "Procesando pago..." : `Pagar S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}`}
-            </Button>
-          </form>
+              <Button type="submit" disabled={cargando} className="w-full">
+                {cargando ? "Procesando pago..." : `Pagar S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}`}
+              </Button>
+            </form>
+          )}
         </Card>
       </div>
     </main>

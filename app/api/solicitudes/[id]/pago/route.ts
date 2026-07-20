@@ -37,8 +37,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await db.update(expedientes).set({ estado: "PAGO_PENDIENTE" }).where(eq(expedientes.id, id));
   }
 
-  const { medioPago, tokenPago, email } = analisis.data;
-  const resultado = await cobrarDerechoDeTramite(tokenPago, email, medioPago);
+  const { medioPago, tokenPago, email, paymentMethodId, issuerId } = analisis.data;
+  const resultado = await cobrarDerechoDeTramite(tokenPago, email, medioPago, { paymentMethodId, issuerId });
 
   const [pago] = await db
     .insert(pagos)

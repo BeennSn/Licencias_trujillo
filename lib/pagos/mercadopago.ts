@@ -8,13 +8,12 @@
 // más abajo, que reduce el monto real a S/1.80 aunque el negocio vea S/180).
 // Ver: https://www.mercadopago.com.pe/developers/es/docs/checkout-api/additional-content/your-integrations/test/accounts
 //
-// OJO ADICIONAL: el frontend (app/solicitud/[expedienteId]/pago/page.tsx)
-// todavía genera un token de PRUEBA falso (generarTokenDePrueba), no un
-// token real tokenizado con el SDK de Mercado Pago (Card Payment Brick).
-// Con credenciales de producción, el medio "tarjeta" va a fallar (Mercado
-// Pago rechaza un token que no es suyo) hasta integrar el Brick real.
-// Yape/PagoEfectivo no necesitan token de tarjeta, pero tampoco se probaron
-// aún con una cuenta de producción real.
+// El medio "tarjeta" usa el Card Payment Brick real de Mercado Pago
+// (app/solicitud/[expedienteId]/pago/page.tsx, @mercadopago/sdk-react), que
+// tokeniza la tarjeta en el navegador y entrega paymentMethodId/issuerId
+// junto al token — necesarios para que este cobro sea válido. Yape/
+// PagoEfectivo no usan token de tarjeta, van directo por payment_method_id
+// (tampoco se probaron aún con una cuenta de producción real).
 //
 // Si no hay MERCADOPAGO_ACCESS_TOKEN configurada, se SIMULA la aprobación
 // localmente para no bloquear el resto del flujo durante el desarrollo.
@@ -40,7 +39,11 @@ export type ResultadoCobro =
 export async function cobrarDerechoDeTramite(
   tokenPago: string,
   email: string,
-  medioPago: MedioPago
+  medioPago: MedioPago,
+  // Solo aplican a "tarjeta": los entrega el Card Payment Brick junto al
+  // token. Mercado Pago los exige para procesar el cobro (identifican la
+  // marca de la tarjeta y el banco emisor).
+  datosTarjeta?: { paymentMethodId?: string; issuerId?: string }
 ): Promise<ResultadoCobro> {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
@@ -71,8 +74,12 @@ export async function cobrarDerechoDeTramite(
       description: "Derecho de trámite - Licencia de funcionamiento MPT",
       installments: 1,
       // Con tarjeta, el "token" es el token de tarjeta tokenizado en el
-      // cliente; con Yape/PagoEfectivo se indica el medio directamente.
-      ...(esTarjeta ? { token: tokenPago } : { payment_method_id: medioPago }),
+      // cliente (Card Payment Brick), junto con la marca (payment_method_id,
+      // ej. "visa") y el banco emisor (issuer_id) que entrega el mismo
+      // Brick; con Yape/PagoEfectivo se indica el medio directamente.
+      ...(esTarjeta
+        ? { token: tokenPago, payment_method_id: datosTarjeta?.paymentMethodId, issuer_id: datosTarjeta?.issuerId }
+        : { payment_method_id: medioPago }),
       payer: { email },
     }),
   });

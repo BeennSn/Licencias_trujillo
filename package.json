@@ -13,6 +13,7 @@
     "db:reset": "tsx db/reset.ts"
   },
   "dependencies": {
+    "@mercadopago/sdk-react": "^1.0.7",
     "@neondatabase/serverless": "^1.1.0",
     "@react-pdf/renderer": "^4.5.1",
     "@vercel/blob": "^2.6.1",

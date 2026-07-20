@@ -83,6 +83,10 @@ export const esquemaPago = z.object({
   medioPago: z.enum(["tarjeta", "yape", "pagoefectivo"]),
   tokenPago: z.string().min(1, "Falta el token de pago generado por la pasarela."),
   email: correoNoTemporal,
+  // Solo vienen cuando medioPago="tarjeta" y se pagó con el Card Payment
+  // Brick real de Mercado Pago (ver app/solicitud/[expedienteId]/pago/page.tsx).
+  paymentMethodId: z.string().optional(),
+  issuerId: z.string().optional(),
 });
 
 // Antes esta ruta no validaba nada (tomaba el body tal cual); ahora exige
