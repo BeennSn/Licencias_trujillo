@@ -10,5 +10,6 @@ export default async function PostLogin() {
 
   if (sesion.user.rol === "inspector") redirect("/inspector");
   if (sesion.user.rol === "admin") redirect("/admin");
+  if (sesion.user.rol === "cajero") redirect("/cajero");
   redirect("/negocio");
 }

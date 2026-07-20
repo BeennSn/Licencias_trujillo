@@ -22,6 +22,7 @@ export const authConfig: NextAuthConfig = {
       if (pathname.startsWith("/negocio")) return rol === "negocio";
       if (pathname.startsWith("/inspector")) return rol === "inspector";
       if (pathname.startsWith("/admin")) return rol === "admin";
+      if (pathname.startsWith("/cajero")) return rol === "cajero";
 
       return true;
     },
@@ -37,7 +38,7 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
-        session.user.rol = token.rol as "negocio" | "inspector" | "admin";
+        session.user.rol = token.rol as "negocio" | "inspector" | "admin" | "cajero";
         session.user.negocioId = token.negocioId as string | null;
       }
       return session;
