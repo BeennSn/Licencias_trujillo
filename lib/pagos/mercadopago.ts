@@ -2,16 +2,23 @@
 //
 // ADVERTENCIA PARA EL EQUIPO: Mercado Pago usa el MISMO endpoint para
 // credenciales de prueba (empiezan con "TEST-") y de producción (empiezan
-// con "APP_USR-"). Si ponen su access token de PRODUCCIÓN en
-// MERCADOPAGO_ACCESS_TOKEN, cualquier pago que se procese será un cobro
-// REAL. Para desarrollo y para la demo de la expo, usen un usuario de
-// prueba (Mercado Pago > Tus integraciones > la app > "Cuentas de prueba")
-// y solo cambien al access token de producción cuando de verdad quieran
-// cobrar. Ver: https://www.mercadopago.com.pe/developers/es/docs/checkout-api/additional-content/your-integrations/test/accounts
+// con "APP_USR-"). El access token configurado ahora mismo es de
+// PRODUCCIÓN: cualquier pago que se procese es un cobro REAL a una tarjeta/
+// cuenta real (mitigado mientras se prueba: ver MONTO_TRAMITE_COBRO_REAL_SOLES
+// más abajo, que reduce el monto real a S/1.80 aunque el negocio vea S/180).
+// Ver: https://www.mercadopago.com.pe/developers/es/docs/checkout-api/additional-content/your-integrations/test/accounts
+//
+// OJO ADICIONAL: el frontend (app/solicitud/[expedienteId]/pago/page.tsx)
+// todavía genera un token de PRUEBA falso (generarTokenDePrueba), no un
+// token real tokenizado con el SDK de Mercado Pago (Card Payment Brick).
+// Con credenciales de producción, el medio "tarjeta" va a fallar (Mercado
+// Pago rechaza un token que no es suyo) hasta integrar el Brick real.
+// Yape/PagoEfectivo no necesitan token de tarjeta, pero tampoco se probaron
+// aún con una cuenta de producción real.
 //
 // Si no hay MERCADOPAGO_ACCESS_TOKEN configurada, se SIMULA la aprobación
 // localmente para no bloquear el resto del flujo durante el desarrollo.
-import { MONTO_TRAMITE_SOLES } from "../constantes";
+import { MONTO_TRAMITE_COBRO_REAL_SOLES } from "../constantes";
 
 // "efectivo" nunca llega a cobrarDerechoDeTramite: es un pago presencial en
 // caja que el cajero confirma directo, sin pasar por la pasarela (ver
@@ -56,7 +63,11 @@ export async function cobrarDerechoDeTramite(
       "X-Idempotency-Key": crypto.randomUUID(),
     },
     body: JSON.stringify({
-      transaction_amount: MONTO_TRAMITE_SOLES,
+      // Cobro real reducido mientras se prueba con credenciales de
+      // producción (ver MONTO_TRAMITE_COBRO_REAL_SOLES en lib/constantes.ts)
+      // — el negocio ve y se le registra el monto oficial S/180, pero acá
+      // solo se mueven S/1.80 de verdad.
+      transaction_amount: MONTO_TRAMITE_COBRO_REAL_SOLES,
       description: "Derecho de trámite - Licencia de funcionamiento MPT",
       installments: 1,
       // Con tarjeta, el "token" es el token de tarjeta tokenizado en el

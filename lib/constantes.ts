@@ -3,6 +3,15 @@
 // monto del derecho de trámite).
 export const MONTO_TRAMITE_SOLES = 180;
 
+// OJO: mientras se prueba la integración real de Mercado Pago con
+// credenciales de PRODUCCIÓN (ver lib/pagos/mercadopago.ts), el negocio ve
+// y se le registra en BD el monto oficial (MONTO_TRAMITE_SOLES = S/180),
+// pero el cobro que de verdad se envía a la pasarela es de solo S/1.80,
+// para no mover dinero real mientras se valida el flujo. Antes de operar en
+// serio, borrar esta constante y usar MONTO_TRAMITE_SOLES directamente en
+// cobrarDerechoDeTramite().
+export const MONTO_TRAMITE_COBRO_REAL_SOLES = 1.8;
+
 export const DIAS_HABILES_SEGUNDA_INSPECCION = 30;
 
 export const VIGENCIA_LICENCIA_ANIOS = 1;
