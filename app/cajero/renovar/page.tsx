@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
-import { MONTO_TRAMITE_SOLES, MONTO_TRAMITE_COBRO_REAL_SOLES, QR_YAPE_PLIN_IMAGEN } from "@/lib/constantes";
+import { MONTO_TRAMITE_SOLES, MONTO_TRAMITE_COBRO_REAL_SOLES } from "@/lib/constantes";
 
 type MedioPagoPresencial = "efectivo" | "tarjeta" | "yape";
 
@@ -107,19 +106,13 @@ export default function PaginaCajeroRenovar() {
           </Select>
 
           {medioPago === "yape" && (
-            <div className="rounded-md border border-gray-200 p-4 space-y-3 text-center">
-              <Image
-                src={QR_YAPE_PLIN_IMAGEN}
-                alt="QR Yape/Plin con monto fijo"
-                width={220}
-                height={220}
-                className="mx-auto"
-              />
-              <p className="text-sm text-gray-600">
-                Monto fijo del QR: <strong>S/ {MONTO_TRAMITE_COBRO_REAL_SOLES.toFixed(2)}</strong> (modo prueba)
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-1 text-sm text-gray-600">
+              <p>
+                Genera el cobro por <strong>S/ {MONTO_TRAMITE_COBRO_REAL_SOLES.toFixed(2)}</strong> (modo prueba) en
+                la app de Izipay y muestra el QR al cliente para que pague con Yape o Plin.
               </p>
               <p className="text-xs text-gray-400">
-                Verifica en tu app que el pago llegó antes de confirmar.
+                Confirma el pago en tu app antes de registrar el cobro acá abajo.
               </p>
             </div>
           )}
