@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 import { db } from "@/lib/db/client";
 import { documentos, expedientes } from "@/lib/db/schema";
 import { esquemaDocumento } from "@/lib/validaciones";
 import { ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS, puedeTransicionar } from "@/lib/estadosExpediente";
 import { TAMANO_MAXIMO_DOCUMENTO_BYTES, TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS } from "@/lib/constantes";
 
-// Paso C del wizard: sube un documento (ej. plano del local) a Vercel Blob
-// y lo registra en la base de datos. Requisito legal explícito del cliente:
-// todo documento debe tener fecha de vigencia futura y no estar "en trámite"
-// (esa validación vive en lib/validaciones.ts::esquemaDocumento).
+// Paso C del wizard: sube el plano del local (único documento que se pide)
+// a Vercel Blob y lo registra en la base de datos. Un solo plano por
+// expediente: si ya había uno, se borra (fila + blob) antes de guardar el
+// nuevo, así subir otro archivo simplemente lo reemplaza.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -51,30 +51,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     access: "public",
   });
 
-  const analisis = esquemaDocumento.safeParse({
-    tipo: formulario.get("tipo"),
-    nombre: formulario.get("nombre") ?? archivo.name,
-    urlArchivo: blob.url,
-    fechaVigencia: formulario.get("fechaVigencia"),
-    enTramite: formulario.get("enTramite") === "true",
-  });
-
+  const analisis = esquemaDocumento.safeParse({ urlArchivo: blob.url });
   if (!analisis.success) {
     return NextResponse.json({ error: analisis.error.issues[0].message }, { status: 400 });
   }
 
+  const documentosAnteriores = await db.select().from(documentos).where(eq(documentos.expedienteId, id));
+  if (documentosAnteriores.length > 0) {
+    await db.delete(documentos).where(eq(documentos.expedienteId, id));
+    await Promise.all(documentosAnteriores.map((doc) => del(doc.urlArchivo).catch(() => {})));
+  }
+
   await db.insert(documentos).values({ expedienteId: id, ...analisis.data });
 
-  // Con el plano del local (documento obligatorio) ya subido y válido, el
-  // expediente pasa de BORRADOR a DOCUMENTOS_COMPLETOS.
-  const documentosActuales = await db.select().from(documentos).where(eq(documentos.expedienteId, id));
-  const tienePlanoValido = documentosActuales.some((doc) => doc.tipo === "plano_local" && !doc.enTramite);
-
-  if (
-    tienePlanoValido &&
-    expediente.estado === "BORRADOR" &&
-    puedeTransicionar(expediente.estado, "DOCUMENTOS_COMPLETOS")
-  ) {
+  // Con el plano del local ya subido, el expediente pasa de BORRADOR a
+  // DOCUMENTOS_COMPLETOS.
+  if (expediente.estado === "BORRADOR" && puedeTransicionar(expediente.estado, "DOCUMENTOS_COMPLETOS")) {
     await db
       .update(expedientes)
       .set({ estado: "DOCUMENTOS_COMPLETOS", updatedAt: new Date() })

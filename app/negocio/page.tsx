@@ -107,18 +107,17 @@ export default async function PaginaNegocio() {
 
           {expedienteActual.estado === "SEGUNDA_INSPECCION_PROGRAMADA" && (
             <Link href={`/solicitud/${expedienteActual.id}/documentos`}>
-              <Button variante="secundario">Corregir documentos observados</Button>
+              <Button variante="secundario">Corregir el plano observado</Button>
             </Link>
           )}
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">Documentos</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">Plano del local</h3>
             <ul className="text-sm space-y-1">
               {documentosActuales.map((doc) => (
                 <li key={doc.id}>
                   <a href={doc.urlArchivo} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                    {doc.nombre}
-                    {doc.tipo === "plano_local" && <span className="text-xs text-gray-500"> (Plano del local)</span>}
+                    Ver plano del local
                   </a>
                 </li>
               ))}

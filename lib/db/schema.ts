@@ -30,8 +30,6 @@ export const estadoExpediente = pgEnum("estado_expediente", [
   "RECHAZADA",
 ]);
 
-export const tipoDocumento = pgEnum("tipo_documento", ["plano_local", "otro"]);
-
 export const estadoPago = pgEnum("estado_pago", ["pendiente", "aprobado", "rechazado"]);
 
 // Medios de pago habilitados por Mercado Pago Perú (verificar en el
@@ -118,18 +116,15 @@ export const expedientes = pgTable("expedientes", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Documentos subidos en el paso C. fechaVigencia debe ser futura y enTramite
-// debe ser false para que el expediente pueda avanzar (ver lib/validaciones/documentos.ts).
+// El plano del local subido en el paso C (requisito explícito del profesor:
+// es el único documento que se pide). Un solo registro por expediente: subir
+// uno nuevo reemplaza al anterior (ver app/api/solicitudes/[id]/documentos).
 export const documentos = pgTable("documentos", {
   id: uuid("id").primaryKey().defaultRandom(),
   expedienteId: uuid("expediente_id")
     .notNull()
     .references(() => expedientes.id),
-  tipo: tipoDocumento("tipo").notNull(),
-  nombre: varchar("nombre", { length: 255 }).notNull(),
   urlArchivo: text("url_archivo").notNull(),
-  fechaVigencia: date("fecha_vigencia").notNull(),
-  enTramite: boolean("en_tramite").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

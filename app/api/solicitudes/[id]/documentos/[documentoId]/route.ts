@@ -40,12 +40,9 @@ export async function DELETE(
   await db.delete(documentos).where(eq(documentos.id, documentoId));
   await del(documento.urlArchivo).catch(() => {});
 
-  // Si el documento borrado era el plano válido, el expediente vuelve a
-  // BORRADOR: ya no cumple el requisito para haber pasado a DOCUMENTOS_COMPLETOS.
-  const documentosRestantes = await db.select().from(documentos).where(eq(documentos.expedienteId, id));
-  const sigueTeniendoPlanoValido = documentosRestantes.some((doc) => doc.tipo === "plano_local" && !doc.enTramite);
-
-  if (!sigueTeniendoPlanoValido && expediente.estado === "DOCUMENTOS_COMPLETOS") {
+  // Sin el plano, el expediente vuelve a BORRADOR: ya no cumple el
+  // requisito para haber pasado a DOCUMENTOS_COMPLETOS.
+  if (expediente.estado === "DOCUMENTOS_COMPLETOS") {
     await db.update(expedientes).set({ estado: "BORRADOR", updatedAt: new Date() }).where(eq(expedientes.id, id));
   }
 

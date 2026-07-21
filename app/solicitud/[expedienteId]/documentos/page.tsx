@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
@@ -14,11 +13,7 @@ import type { EstadoExpediente } from "@/lib/estadosExpediente";
 
 type Documento = {
   id: string;
-  tipo: "plano_local" | "otro";
-  nombre: string;
   urlArchivo: string;
-  fechaVigencia: string;
-  enTramite: boolean;
 };
 
 export default function PasoDocumentos() {
@@ -29,14 +24,11 @@ export default function PasoDocumentos() {
   // resto del wizard (RUC/domicilio/documentos) es igual para ambos canales.
   const pasoDePago = sesion?.user?.rol === "cajero" ? "pago-presencial" : "pago";
 
-  const [documentos, setDocumentos] = useState<Documento[]>([]);
-  const [tipo, setTipo] = useState<"plano_local" | "otro">("plano_local");
-  const [nombre, setNombre] = useState("");
-  const [fechaVigencia, setFechaVigencia] = useState("");
+  const [documento, setDocumento] = useState<Documento | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
-  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+  const [eliminando, setEliminando] = useState(false);
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
   const [estadoExpediente, setEstadoExpediente] = useState<EstadoExpediente | null>(null);
 
@@ -58,10 +50,10 @@ export default function PasoDocumentos() {
 
     fetch(`/api/solicitudes/${expedienteId}/documentos`)
       .then((r) => r.json())
-      .then((datos) => setDocumentos(datos.documentos ?? []));
+      .then((datos) => setDocumento((datos.documentos ?? [])[0] ?? null));
   }, [expedienteId, router, estadoSesion, pasoDePago]);
 
-  const tienePlanoValido = documentos.some((d) => d.tipo === "plano_local" && !d.enTramite);
+  const tienePlano = Boolean(documento);
   // Corrección de documentos entre la 1ra y la 2da inspección (ver
   // lib/estadosExpediente.ts): el pago ya está hecho, así que acá no hay
   // "siguiente paso" del wizard al que avanzar — solo se guarda el cambio y
@@ -85,16 +77,6 @@ export default function PasoDocumentos() {
     evento.preventDefault();
     setError(null);
 
-    if (!nombre.trim()) {
-      setError("Ingresa el nombre del documento.");
-      return;
-    }
-
-    if (!fechaVigencia) {
-      setError("Selecciona la fecha de vigencia del documento.");
-      return;
-    }
-
     if (!archivo) {
       setError("Selecciona un archivo para subir.");
       return;
@@ -113,9 +95,6 @@ export default function PasoDocumentos() {
     setCargando(true);
 
     const formulario = new FormData();
-    formulario.append("tipo", tipo);
-    formulario.append("nombre", nombre.trim());
-    formulario.append("fechaVigencia", fechaVigencia);
     formulario.append("archivo", archivo);
 
     const respuesta = await fetch(`/api/solicitudes/${expedienteId}/documentos`, {
@@ -131,28 +110,27 @@ export default function PasoDocumentos() {
     }
 
     const listado = await fetch(`/api/solicitudes/${expedienteId}/documentos`).then((r) => r.json());
-    setDocumentos(listado.documentos ?? []);
-    setNombre("");
-    setFechaVigencia("");
+    setDocumento((listado.documentos ?? [])[0] ?? null);
     setArchivo(null);
   }
 
-  async function eliminarDocumento(documentoId: string) {
+  async function eliminarDocumento() {
+    if (!documento) return;
     setError(null);
-    setEliminandoId(documentoId);
+    setEliminando(true);
 
-    const respuesta = await fetch(`/api/solicitudes/${expedienteId}/documentos/${documentoId}`, {
+    const respuesta = await fetch(`/api/solicitudes/${expedienteId}/documentos/${documento.id}`, {
       method: "DELETE",
     });
     const datos = await respuesta.json();
-    setEliminandoId(null);
+    setEliminando(false);
 
     if (!respuesta.ok) {
       setError(datos.error ?? "No se pudo eliminar el documento.");
       return;
     }
 
-    setDocumentos((actuales) => actuales.filter((doc) => doc.id !== documentoId));
+    setDocumento(null);
   }
 
   return (
@@ -162,38 +140,34 @@ export default function PasoDocumentos() {
         <Card className="space-y-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {corrigiendoEntreInspecciones ? "Corregir documentos observados" : "Documentos del local"}
+              {corrigiendoEntreInspecciones ? "Corregir el plano del local" : "Plano del local"}
             </h1>
             <p className="text-sm text-gray-500">
               {corrigiendoEntreInspecciones
-                ? "Reemplaza o agrega los documentos que el inspector observó en la primera visita, antes de la segunda inspección."
-                : "El plano del local es obligatorio."}{" "}
-              Todos los documentos deben estar <strong>vigentes</strong> (fecha futura) y{" "}
-              <strong>no encontrarse en trámite</strong>.
+                ? "Sube el plano corregido según lo que observó el inspector en la primera visita."
+                : "Sube el plano del local. Si subes otro archivo, reemplaza al anterior."}
             </p>
           </div>
 
-          <form onSubmit={subirDocumento} className="space-y-4 border-b border-gray-200 pb-6">
-            <Select label="Tipo de documento" value={tipo} onChange={(e) => setTipo(e.target.value as "plano_local" | "otro")}>
-              <option value="plano_local">Plano del local (obligatorio)</option>
-              <option value="otro">Otro documento</option>
-            </Select>
+          {documento ? (
+            <div className="flex items-center justify-between border rounded px-3 py-2 text-sm">
+              <a href={documento.urlArchivo} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
+                Ver plano subido
+              </a>
+              <button
+                type="button"
+                onClick={eliminarDocumento}
+                disabled={eliminando}
+                className="text-xs text-red-600 hover:underline disabled:opacity-50"
+              >
+                {eliminando ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">Aún no subes el plano del local.</p>
+          )}
 
-            <Input
-              label="Nombre del documento"
-              required
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-            />
-
-            <Input
-              label="Fecha de vigencia"
-              type="date"
-              required
-              value={fechaVigencia}
-              onChange={(e) => setFechaVigencia(e.target.value)}
-            />
-
+          <form onSubmit={subirDocumento} className="space-y-4">
             <Input
               label="Archivo (PDF, JPG o PNG, máx. 10 MB)"
               type="file"
@@ -205,38 +179,9 @@ export default function PasoDocumentos() {
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <Button type="submit" disabled={cargando} className="w-full">
-              {cargando ? "Subiendo..." : "Subir documento"}
+              {cargando ? "Subiendo..." : documento ? "Reemplazar plano" : "Subir plano"}
             </Button>
           </form>
-
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-700">Documentos subidos</h2>
-            {documentos.length === 0 && <p className="text-sm text-gray-400">Aún no subes documentos.</p>}
-            <ul className="space-y-1 text-sm">
-              {documentos.map((doc) => (
-                <li key={doc.id} className="flex justify-between items-center border rounded px-3 py-2">
-                  <span>
-                    <span className="font-medium">{doc.nombre}</span>
-                    {doc.tipo === "plano_local" && (
-                      <span className="text-xs text-gray-500"> (Plano del local)</span>
-                    )}
-                    {" "}· vigente hasta {doc.fechaVigencia}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span className="text-green-700 text-xs font-semibold">Vigente</span>
-                    <button
-                      type="button"
-                      onClick={() => eliminarDocumento(doc.id)}
-                      disabled={eliminandoId === doc.id}
-                      className="text-xs text-red-600 hover:underline disabled:opacity-50"
-                    >
-                      {eliminandoId === doc.id ? "Eliminando..." : "Eliminar"}
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
 
           <Button
             onClick={() =>
@@ -244,15 +189,13 @@ export default function PasoDocumentos() {
                 corrigiendoEntreInspecciones ? panelDeRetorno : `/solicitud/${expedienteId}/${pasoDePago}`
               )
             }
-            disabled={!tienePlanoValido}
+            disabled={!tienePlano}
             className="w-full"
           >
             {corrigiendoEntreInspecciones ? "Guardar y volver" : "Continuar al pago"}
           </Button>
-          {!tienePlanoValido && (
-            <p className="text-xs text-gray-500 text-center">
-              Sube el plano del local (vigente, no en trámite) para continuar.
-            </p>
+          {!tienePlano && (
+            <p className="text-xs text-gray-500 text-center">Sube el plano del local para continuar.</p>
           )}
         </Card>
       </div>

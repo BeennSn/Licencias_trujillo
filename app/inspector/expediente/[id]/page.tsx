@@ -72,16 +72,14 @@ export default async function DetalleExpedienteInspector({
       </Card>
 
       <Card className="space-y-2 text-sm">
-        <h2 className="font-semibold text-gray-800 mb-1">Documentos</h2>
-        {documentosDelExpediente.length === 0 && <p className="text-gray-500">Sin documentos subidos.</p>}
+        <h2 className="font-semibold text-gray-800 mb-1">Plano del local</h2>
+        {documentosDelExpediente.length === 0 && <p className="text-gray-500">Sin plano subido.</p>}
         <ul className="space-y-1">
           {documentosDelExpediente.map((doc) => (
-            <li key={doc.id} className="flex justify-between border rounded px-3 py-2">
+            <li key={doc.id} className="border rounded px-3 py-2">
               <a href={doc.urlArchivo} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                {doc.nombre}
-                {doc.tipo === "plano_local" && <span className="text-xs text-gray-500"> (Plano del local)</span>}
+                Ver plano del local
               </a>
-              <span className="text-xs text-gray-500">Vigente hasta {doc.fechaVigencia}</span>
             </li>
           ))}
         </ul>

@@ -63,25 +63,13 @@ export const esquemaDomicilio = z.object({
   horarioAtencion: z.string().min(3, "Indica el horario de atención del local."),
 });
 
-// Un documento solo es aceptable si su fecha de vigencia es futura y no
-// está marcado como "en trámite" (requisito legal explícito del cliente:
-// todos los documentos deben estar vigentes, nunca en proceso de obtención).
-export const esquemaDocumento = z
-  .object({
-    tipo: z.enum(["plano_local", "otro"]),
-    nombre: z.string().min(2),
-    urlArchivo: z.string().min(1, "Debes subir el archivo."),
-    fechaVigencia: z.iso.date("Ingresa una fecha de vigencia válida."),
-    enTramite: z.boolean(),
-  })
-  .refine((doc) => doc.fechaVigencia > new Date().toISOString().slice(0, 10), {
-    message: "La fecha de vigencia del documento debe ser futura.",
-    path: ["fechaVigencia"],
-  })
-  .refine((doc) => doc.enTramite === false, {
-    message: "El documento no puede estar en trámite: debe estar vigente y ya emitido.",
-    path: ["enTramite"],
-  });
+// Paso C: solo se pide el plano del local (requisito explícito del
+// profesor). El tipo de archivo y el tamaño ya se validan antes en la ruta
+// (ver TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS/TAMANO_MAXIMO_DOCUMENTO_BYTES);
+// acá solo queda confirmar que efectivamente se subió algo.
+export const esquemaDocumento = z.object({
+  urlArchivo: z.string().min(1, "Debes subir el archivo."),
+});
 
 // Usado solo en modo simulado (sin MERCADOPAGO_ACCESS_TOKEN configurado);
 // con credenciales reales, el pago va por Checkout Pro (ver
