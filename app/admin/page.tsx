@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { expedientes, negocios } from "@/lib/db/schema";
@@ -32,7 +33,11 @@ export default async function PaginaAdminExpedientes() {
           <tbody>
             {filas.map(({ expediente, negocio }) => (
               <tr key={expediente.id} className="border-b last:border-0">
-                <td className="py-2 pr-4">{expediente.numeroExpediente}</td>
+                <td className="py-2 pr-4">
+                  <Link href={`/admin/expediente/${expediente.id}`} className="text-blue-700 hover:underline">
+                    {expediente.numeroExpediente}
+                  </Link>
+                </td>
                 <td className="py-2 pr-4">{negocio.razonSocial}</td>
                 <td className="py-2 pr-4">{expediente.distrito}</td>
                 <td className="py-2 pr-4">{expediente.tipo}</td>

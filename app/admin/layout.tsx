@@ -8,8 +8,10 @@ export default async function LayoutAdmin({ children }: { children: React.ReactN
   return (
     <div className="flex-1 flex flex-col">
       <AreaPrivadaNav titulo="Panel de Administración" correo={sesion?.user?.email} />
-      <div className="bg-white border-b px-4 py-2 flex gap-4 text-sm">
+      <div className="bg-white border-b px-4 py-2 flex gap-4 text-sm flex-wrap">
         <Link href="/admin" className="text-blue-700 hover:underline">Expedientes</Link>
+        <Link href="/admin/pagos" className="text-blue-700 hover:underline">Pagos</Link>
+        <Link href="/admin/inspecciones" className="text-blue-700 hover:underline">Inspecciones</Link>
         <Link href="/admin/inspectores" className="text-blue-700 hover:underline">Inspectores</Link>
         <Link href="/admin/cajeros" className="text-blue-700 hover:underline">Cajeros</Link>
         <Link href="/admin/caja" className="text-blue-700 hover:underline">Caja</Link>
