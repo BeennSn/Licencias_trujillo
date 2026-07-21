@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -64,6 +65,7 @@ export default function PasoDocumentos() {
   // de confirmación de SU propio expediente, no a un panel logueado.
   const panelDeRetorno =
     sesion?.user?.rol === "cajero" ? "/cajero" : `/solicitud/${expedienteId}/confirmacion`;
+  const volverInicio = sesion?.user?.rol === "cajero" ? "/cajero" : "/";
 
   if (verificandoAcceso) {
     return (
@@ -138,6 +140,9 @@ export default function PasoDocumentos() {
       <div className="w-full max-w-lg">
         <StepIndicator pasoActual={3} />
         <Card className="space-y-6">
+          <Link href={volverInicio} className="text-xs text-gray-500 hover:underline">
+            ← {sesion?.user?.rol === "cajero" ? "Volver al panel principal" : "Volver al inicio"}
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900">
               {corrigiendoEntreInspecciones ? "Corregir el plano del local" : "Plano del local"}

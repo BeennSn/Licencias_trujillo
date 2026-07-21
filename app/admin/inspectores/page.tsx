@@ -97,6 +97,9 @@ export default function PaginaAdminInspectores() {
 
       <Card className="space-y-2">
         <h2 className="font-semibold text-gray-800">Inspectores registrados</h2>
+        <p className="text-xs text-gray-500">
+          Solo puede haber un inspector activo a la vez: activar uno desactiva automáticamente a los demás.
+        </p>
         <ul className="divide-y text-sm">
           {inspectores.map((inspector) => (
             <li key={inspector.id} className="py-2 flex items-center justify-between">

@@ -71,14 +71,23 @@ export async function generarComprobantePago(params: {
       pdfUrl: blob.url,
     });
 
+    // El comprobante ya quedó generado y guardado en este punto (PDF, blob
+    // y fila en comprobantes_pago), así que si el envío del correo falla
+    // igual se devuelve el resultado — que el negocio no reciba el correo
+    // no debe ocultar el botón de descarga en la pantalla de confirmación.
     if (expediente.emailContacto) {
-      await enviarCorreoComprobantePago(expediente.emailContacto, {
-        numeroComprobante,
-        numeroExpediente: expediente.numeroExpediente ?? "",
-        razonSocial: negocio.razonSocial,
-        montoTotal,
-        pdfBuffer,
-      });
+      try {
+        await enviarCorreoComprobantePago(expediente.emailContacto, {
+          numeroComprobante,
+          numeroExpediente: expediente.numeroExpediente ?? "",
+          razonSocial: negocio.razonSocial,
+          montoTotal,
+          pdfBuffer,
+          pdfUrl: blob.url,
+        });
+      } catch (error) {
+        console.error("Error mandando el correo del comprobante de pago:", error);
+      }
     }
 
     return { numeroComprobante, pdfUrl: blob.url };

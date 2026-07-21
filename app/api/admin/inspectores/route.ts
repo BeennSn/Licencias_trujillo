@@ -32,9 +32,14 @@ export async function POST(request: Request) {
   const { email, password, nombre } = analisis.data;
   const passwordHash = await bcrypt.hash(password, 10);
 
+  // activo: false explícito (el default de la tabla es true) — solo puede
+  // haber un inspector activo a la vez, así que crear uno nuevo no debe
+  // desplazar en silencio al que ya está operando. El admin lo activa a
+  // mano cuando corresponda (ver PATCH .../[id], que ahí sí desactiva al
+  // anterior automáticamente).
   const [inspector] = await db
     .insert(usuarios)
-    .values({ email: email.toLowerCase().trim(), passwordHash, nombre, rol: "inspector" })
+    .values({ email: email.toLowerCase().trim(), passwordHash, nombre, rol: "inspector", activo: false })
     .returning();
 
   return NextResponse.json({ inspector });

@@ -113,6 +113,9 @@ export default function PasoPagoPresencial() {
       <div className="w-full max-w-lg">
         <StepIndicator pasoActual={4} />
         <Card className="space-y-6">
+          <Link href="/cajero" className="text-xs text-gray-500 hover:underline">
+            ← Volver al panel principal
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Pago presencial</h1>
             <p className="text-sm text-gray-500">

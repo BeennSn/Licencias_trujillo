@@ -184,6 +184,9 @@ export default function PaginaCajeroRenovar() {
   if (!renovacion) {
     return (
       <main className="max-w-lg mx-auto px-4 py-10 space-y-4">
+        <Link href="/cajero" className="text-xs text-gray-500 hover:underline">
+          ← Volver al panel principal
+        </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Renovar licencia</h1>
           <p className="text-gray-500 text-sm">
@@ -213,6 +216,9 @@ export default function PaginaCajeroRenovar() {
 
   return (
     <main className="max-w-lg mx-auto px-4 py-10 space-y-4">
+      <Link href="/cajero" className="text-xs text-gray-500 hover:underline">
+        ← Volver al panel principal
+      </Link>
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{renovacion.razonSocial}</h1>
         <p className="text-gray-500 text-sm">Renovación por S/ {renovacion.monto.toFixed(2)}</p>

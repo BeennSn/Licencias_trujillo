@@ -20,6 +20,7 @@ export default function PaginaRenovar() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
   // Con Mercado Pago configurado: crea el expediente de renovación y
@@ -71,6 +72,7 @@ export default function PaginaRenovar() {
     }
 
     setPdfUrl(datos.pdfUrl);
+    setComprobanteUrl(datos.comprobanteUrl ?? null);
   }
 
   return (
@@ -89,6 +91,11 @@ export default function PaginaRenovar() {
             <a href={pdfUrl} target="_blank" rel="noreferrer">
               <Button className="w-full">Descargar nueva licencia (PDF)</Button>
             </a>
+            {comprobanteUrl && (
+              <a href={comprobanteUrl} target="_blank" rel="noreferrer">
+                <Button variante="secundario" className="w-full">Descargar comprobante de pago</Button>
+              </a>
+            )}
           </div>
         ) : mismoLocal === null ? (
           <div className="space-y-3">

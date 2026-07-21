@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +18,8 @@ type DireccionSugerida = { distrito: string; direccion: string };
 export default function PasoDomicilio() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
   const router = useRouter();
+  const { data: sesion } = useSession();
+  const panelDeRetorno = sesion?.user?.rol === "cajero" ? "/cajero" : "/";
 
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [domicilioBloqueado, setDomicilioBloqueado] = useState<{
@@ -165,6 +169,9 @@ export default function PasoDomicilio() {
       <div className="w-full max-w-lg">
         <StepIndicator pasoActual={2} />
         <Card className="space-y-6">
+          <Link href={panelDeRetorno} className="text-xs text-gray-500 hover:underline">
+            ← {sesion?.user?.rol === "cajero" ? "Volver al panel principal" : "Volver al inicio"}
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Domicilio fiscal y del local</h1>
             <p className="text-sm text-gray-500">

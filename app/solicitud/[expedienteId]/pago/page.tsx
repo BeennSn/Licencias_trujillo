@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -105,6 +106,9 @@ export default function PasoPago() {
       <div className="w-full max-w-lg">
         <StepIndicator pasoActual={4} />
         <Card className="space-y-6">
+          <Link href="/" className="text-xs text-gray-500 hover:underline">
+            ← Volver al inicio
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Derecho de trámite</h1>
             <p className="text-sm text-gray-500">

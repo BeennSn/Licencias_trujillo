@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -58,6 +59,12 @@ export default function PaginaRestablecerPassword() {
               {cargando ? "Guardando..." : "Guardar contraseña"}
             </Button>
           </form>
+        )}
+
+        {!listo && (
+          <Link href="/login" className="text-sm text-gray-500 hover:underline block text-center">
+            Volver a iniciar sesión
+          </Link>
         )}
       </Card>
     </main>

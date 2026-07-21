@@ -193,8 +193,11 @@ export async function enviarCorreoDecisionInspeccion(
 }
 
 // Comprobante de pago (ver lib/comprobante.ts): se manda con el PDF
-// adjunto directamente, no solo un enlace, para que quede en la bandeja del
-// negocio sin depender de que el sistema siga disponible después.
+// adjunto Y con un enlace de descarga directo. El enlace es la garantía
+// real de entrega: algunos proveedores de correo (ej. dominios
+// institucionales) filtran o eliminan adjuntos PDF de remitentes nuevos,
+// dejando el correo vacío o directo a spam sin avisar; el enlace a Vercel
+// Blob llega igual aunque eso pase.
 export async function enviarCorreoComprobantePago(
   destinatario: string,
   datos: {
@@ -203,6 +206,7 @@ export async function enviarCorreoComprobantePago(
     razonSocial: string;
     montoTotal: number;
     pdfBuffer: Buffer;
+    pdfUrl: string;
   }
 ) {
   await enviarCorreo(
@@ -210,7 +214,8 @@ export async function enviarCorreoComprobantePago(
     `Comprobante de pago N° ${datos.numeroComprobante} - Expediente ${datos.numeroExpediente}`,
     `<p>Adjuntamos el comprobante de tu pago de <strong>S/ ${datos.montoTotal.toFixed(2)}</strong> correspondiente al
      expediente <strong>${datos.numeroExpediente}</strong> de <strong>${datos.razonSocial}</strong>.</p>
-     <p>Guarda este comprobante como constancia de tu pago.</p>`,
+     <p>Guarda este comprobante como constancia de tu pago.</p>
+     <p><a href="${datos.pdfUrl}">Ver o descargar el comprobante en PDF</a> (por si no ves el adjunto).</p>`,
     [{ filename: `comprobante-${datos.numeroComprobante}.pdf`, content: datos.pdfBuffer, contentType: "application/pdf" }]
   );
 }

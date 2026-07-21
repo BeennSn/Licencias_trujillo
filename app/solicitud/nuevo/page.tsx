@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
@@ -22,6 +23,8 @@ type ResultadoRuc =
 
 export default function PasoRuc() {
   const router = useRouter();
+  const { data: sesion } = useSession();
+  const panelDeRetorno = sesion?.user?.rol === "cajero" ? "/cajero" : "/";
   const [ruc, setRuc] = useState("");
   const [resultado, setResultado] = useState<ResultadoRuc | null>(null);
   const [razonSocialManual, setRazonSocialManual] = useState("");
@@ -93,6 +96,9 @@ export default function PasoRuc() {
       <div className="w-full max-w-lg">
         <StepIndicator pasoActual={1} />
         <Card className="space-y-6">
+          <Link href={panelDeRetorno} className="text-xs text-gray-500 hover:underline">
+            ← {sesion?.user?.rol === "cajero" ? "Volver al panel principal" : "Volver al inicio"}
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Ingresa el RUC de tu negocio</h1>
             <p className="text-sm text-gray-500">

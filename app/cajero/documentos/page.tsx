@@ -73,6 +73,9 @@ export default function PaginaCajeroDocumentos() {
 
   return (
     <main className="max-w-lg mx-auto px-4 py-10 space-y-4">
+      <Link href="/cajero" className="text-xs text-gray-500 hover:underline">
+        ← Volver al panel principal
+      </Link>
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Cambiar plano observado</h1>
         <p className="text-gray-500 text-sm">
@@ -133,12 +136,6 @@ export default function PaginaCajeroDocumentos() {
           <div className="text-green-600 text-3xl">✓</div>
           <p className="text-sm text-green-700">Plano reemplazado correctamente.</p>
         </Card>
-      )}
-
-      {(listo || (resultado && !resultado.elegible)) && (
-        <Link href="/cajero" className="text-sm text-gray-500 hover:underline block text-center">
-          Volver al panel principal
-        </Link>
       )}
     </main>
   );
