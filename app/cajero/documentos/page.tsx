@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -132,6 +133,12 @@ export default function PaginaCajeroDocumentos() {
           <div className="text-green-600 text-3xl">✓</div>
           <p className="text-sm text-green-700">Plano reemplazado correctamente.</p>
         </Card>
+      )}
+
+      {(listo || (resultado && !resultado.elegible)) && (
+        <Link href="/cajero" className="text-sm text-gray-500 hover:underline block text-center">
+          Volver al panel principal
+        </Link>
       )}
     </main>
   );

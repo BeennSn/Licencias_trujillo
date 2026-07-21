@@ -176,6 +176,9 @@ export default function PaginaCajeroRenovar() {
             </a>
           )}
           <Button onClick={reiniciar} className="w-full">Registrar otra renovación</Button>
+          <Link href="/cajero" className="text-sm text-gray-500 hover:underline block">
+            Volver al panel principal
+          </Link>
         </Card>
       </main>
     );

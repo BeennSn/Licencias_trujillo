@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { expedientes, inspecciones } from "@/lib/db/schema";
 import { Card } from "@/components/ui/Card";
@@ -12,6 +13,8 @@ export default async function PasoConfirmacion({
   params: Promise<{ expedienteId: string }>;
 }) {
   const { expedienteId } = await params;
+  const sesion = await auth();
+  const esCajero = sesion?.user?.rol === "cajero";
 
   const [expediente] = await db.select().from(expedientes).where(eq(expedientes.id, expedienteId)).limit(1);
 
@@ -62,15 +65,23 @@ export default async function PasoConfirmacion({
           </p>
 
           <div className="flex flex-col gap-2">
-            <Link
-              href={`/consulta?numeroExpediente=${expediente.numeroExpediente ?? ""}`}
-              className="text-blue-700 hover:underline text-sm"
-            >
-              Consultar el estado de mi trámite
-            </Link>
-            <Link href="/" className="text-gray-500 hover:underline text-sm">
-              Volver al inicio
-            </Link>
+            {esCajero ? (
+              <Link href="/cajero" className="text-blue-700 hover:underline text-sm">
+                Volver al panel principal
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href={`/consulta?numeroExpediente=${expediente.numeroExpediente ?? ""}`}
+                  className="text-blue-700 hover:underline text-sm"
+                >
+                  Consultar el estado de mi trámite
+                </Link>
+                <Link href="/" className="text-gray-500 hover:underline text-sm">
+                  Volver al inicio
+                </Link>
+              </>
+            )}
           </div>
         </Card>
       </div>
