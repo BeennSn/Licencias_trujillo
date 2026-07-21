@@ -20,6 +20,12 @@ export const MONTO_TRAMITE_COBRO_REAL_SOLES = 1.8;
 // de confirmar el pago acá.
 export const QR_YAPE_PLIN_IMAGEN = "/qr-yape-plin.png";
 
+// Tope razonable de vuelto en un pago en efectivo (ver
+// lib/hooks/useCobroPresencial.ts). Si el monto que el cajero dice haber
+// recibido implica un vuelto mayor a esto, probablemente es un error de
+// tipeo (ej. un cero de más) y se bloquea el cobro hasta que lo corrija.
+export const VUELTO_MAXIMO_RAZONABLE_SOLES = 500;
+
 export const DIAS_HABILES_SEGUNDA_INSPECCION = 30;
 
 export const VIGENCIA_LICENCIA_ANIOS = 1;

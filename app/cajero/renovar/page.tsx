@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Select";
-import { MONTO_TRAMITE_SOLES, QR_YAPE_PLIN_IMAGEN } from "@/lib/constantes";
+import { CamposCobroPresencial } from "@/components/cajero/CamposCobroPresencial";
+import { useCobroPresencial } from "@/lib/hooks/useCobroPresencial";
+import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 
-type MedioPagoPresencial = "efectivo" | "yape" | "mixto";
 type ResultadoRenovacion = { razonSocial: string; pdfUrl: string | null; fechaVencimiento: string };
 type Renovacion = { expedienteId: string; razonSocial: string; monto: number };
 
@@ -21,10 +20,7 @@ export default function PaginaCajeroRenovar() {
   const [documentoReemplazado, setDocumentoReemplazado] = useState(false);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [subiendoDocumento, setSubiendoDocumento] = useState(false);
-  const [medioPago, setMedioPago] = useState<MedioPagoPresencial>("efectivo");
-  const [numeroOperacion, setNumeroOperacion] = useState("");
-  const [montoEfectivo, setMontoEfectivo] = useState("");
-  const [montoYape, setMontoYape] = useState("");
+  const cobro = useCobroPresencial(renovacion?.monto ?? MONTO_TRAMITE_SOLES);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoRenovacion | null>(null);
@@ -44,11 +40,8 @@ export default function PaginaCajeroRenovar() {
     setDocumentoReemplazado(false);
     setArchivo(null);
     setRuc("");
-    setMedioPago("efectivo");
-    setNumeroOperacion("");
-    setMontoEfectivo("");
-    setMontoYape("");
     setError(null);
+    cobro.reiniciar();
   }
 
   async function buscarNegocio(evento: React.FormEvent) {
@@ -96,26 +89,14 @@ export default function PaginaCajeroRenovar() {
     setArchivo(null);
   }
 
-  const sumaMixto = (Number(montoEfectivo) || 0) + (Number(montoYape) || 0);
-
   async function confirmarPago(evento: React.FormEvent) {
     evento.preventDefault();
     setError(null);
 
-    if (medioPago === "yape" && !numeroOperacion.trim()) {
-      setError("Ingresa el número de operación para dejar constancia del cobro.");
+    const errorValidacion = cobro.validarParaEnviar();
+    if (errorValidacion) {
+      setError(errorValidacion);
       return;
-    }
-
-    if (medioPago === "mixto") {
-      if (Math.round(sumaMixto * 100) !== Math.round(MONTO_TRAMITE_SOLES * 100)) {
-        setError(`La suma de efectivo y Yape debe ser exactamente S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}.`);
-        return;
-      }
-      if (Number(montoYape) > 0 && !numeroOperacion.trim()) {
-        setError("Ingresa el número de operación del pago por Yape.");
-        return;
-      }
     }
 
     setCargando(true);
@@ -125,10 +106,10 @@ export default function PaginaCajeroRenovar() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         expedienteId: renovacion!.expedienteId,
-        medioPago,
-        numeroOperacion: numeroOperacion.trim() || undefined,
-        montoEfectivo: medioPago === "mixto" ? Number(montoEfectivo) || 0 : undefined,
-        montoYape: medioPago === "mixto" ? Number(montoYape) || 0 : undefined,
+        medioPago: cobro.medioPago,
+        numeroOperacion: cobro.numeroOperacion,
+        montoEfectivo: cobro.medioPago === "mixto" ? Number(cobro.montoEfectivo) || 0 : undefined,
+        montoYape: cobro.medioPago === "mixto" ? Number(cobro.montoYape) || 0 : undefined,
       }),
     });
     const datos = await respuesta.json();
@@ -251,68 +232,7 @@ export default function PaginaCajeroRenovar() {
 
       <Card>
         <form onSubmit={confirmarPago} className="space-y-4">
-          <Select
-            label="Método de pago"
-            value={medioPago}
-            onChange={(e) => setMedioPago(e.target.value as MedioPagoPresencial)}
-          >
-            <option value="efectivo">Efectivo</option>
-            <option value="yape">Yape / Plin (QR)</option>
-            <option value="mixto">Mixto (efectivo + Yape)</option>
-          </Select>
-
-          {(medioPago === "yape" || medioPago === "mixto") && (
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-3 text-center">
-              <Image
-                src={QR_YAPE_PLIN_IMAGEN}
-                alt="QR para pagar con Yape/Plin"
-                width={220}
-                height={220}
-                className="mx-auto rounded-md"
-              />
-              <p className="text-sm text-gray-600">
-                Muestra este QR al cliente para que escanee y pague con Yape o Plin, indicándole el monto a pagar.
-              </p>
-              <p className="text-xs text-gray-400">
-                Verifica en tu app que el pago llegó antes de confirmar el cobro acá abajo.
-              </p>
-            </div>
-          )}
-
-          {medioPago === "mixto" && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Efectivo (S/)"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={montoEfectivo}
-                  onChange={(e) => setMontoEfectivo(e.target.value)}
-                />
-                <Input
-                  label="Yape (S/)"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={montoYape}
-                  onChange={(e) => setMontoYape(e.target.value)}
-                />
-              </div>
-              <p className={`text-xs ${Math.round(sumaMixto * 100) === Math.round(MONTO_TRAMITE_SOLES * 100) ? "text-green-700" : "text-gray-500"}`}>
-                Suma: S/ {sumaMixto.toFixed(2)} de S/ {MONTO_TRAMITE_SOLES.toFixed(2)}
-              </p>
-            </div>
-          )}
-
-          {(medioPago === "yape" || (medioPago === "mixto" && Number(montoYape) > 0)) && (
-            <Input
-              label="Número de operación (Yape)"
-              placeholder="Ej. 000123456"
-              value={numeroOperacion}
-              onChange={(e) => setNumeroOperacion(e.target.value)}
-            />
-          )}
+          <CamposCobroPresencial cobro={cobro} montoTotal={renovacion.monto} />
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={cargando} className="w-full">
