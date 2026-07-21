@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { AutoRefresh } from "@/components/inspector/AutoRefresh";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
+import { CUPO_INSPECCIONES_POR_DIA } from "@/lib/constantes";
 
 // Panel del inspector: solo las visitas pendientes de HOY (incluye
 // atrasadas que aún no se realizan, para no perderlas de vista). No se
@@ -28,6 +29,14 @@ export default async function PaginaInspector() {
 
   const deHoy = filas.filter((f) => f.inspeccion.fechaProgramada <= hoy);
 
+  // Cupo del día (ver CUPO_INSPECCIONES_POR_DIA): es un tope compartido
+  // entre todos los inspectores activos, no "4 por inspector" — por eso se
+  // cuenta sobre TODAS las inspecciones programadas para hoy, sin filtrar
+  // por inspectorId (ver lib/agenda.ts::programarPrimeraInspeccion).
+  const inspeccionesDeHoyTotal = await db.select().from(inspecciones).where(eq(inspecciones.fechaProgramada, hoy));
+  const completadasHoy = inspeccionesDeHoyTotal.filter((i) => i.estado !== "programada").length;
+  const totalHoy = inspeccionesDeHoyTotal.length;
+
   return (
     <main className="max-w-3xl mx-auto px-4 py-10 space-y-6">
       <AutoRefresh />
@@ -35,6 +44,17 @@ export default async function PaginaInspector() {
         <h1 className="text-2xl font-bold text-gray-900">Mis inspecciones de hoy</h1>
         <p className="text-gray-500 text-sm">Visitas técnicas pendientes, ordenadas por turno.</p>
       </div>
+
+      <Card className="flex items-center justify-between">
+        <p className="text-sm text-gray-700">
+          Cupo de hoy: <strong>{completadasHoy} de {totalHoy}</strong> inspecciones completadas
+        </p>
+        {totalHoy >= CUPO_INSPECCIONES_POR_DIA && (
+          <Badge tono={completadasHoy >= totalHoy ? "verde" : "amarillo"}>
+            {completadasHoy >= totalHoy ? "Cupo del día completado" : "Cupo del día lleno"}
+          </Badge>
+        )}
+      </Card>
 
       <Card>
         {deHoy.length === 0 ? (
