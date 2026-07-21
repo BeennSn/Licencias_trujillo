@@ -147,9 +147,12 @@ export async function completarRenovacionAprobada(params: {
     urlConsultaPublica,
   });
 
+  // allowOverwrite: ver comentario equivalente en
+  // app/api/inspector/expediente/[id]/decision/route.ts.
   const blob = await put(`licencias/${numeroLicencia}.pdf`, pdfBuffer, {
     access: "public",
     contentType: "application/pdf",
+    allowOverwrite: true,
   });
 
   const [licenciaNueva] = await db

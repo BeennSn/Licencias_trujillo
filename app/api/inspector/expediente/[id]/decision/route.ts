@@ -21,6 +21,14 @@ import { notificarInspeccionProgramada } from "@/lib/notificacionesInspeccion";
 //   a exactamente 30 días hábiles peruanos.
 // - Observada en la 2da visita -> el expediente queda RECHAZADA (definitivo;
 //   para reintentar, el negocio debe iniciar un expediente nuevo y pagar de nuevo).
+//
+// IMPORTANTE: la inspección solo se marca "conforme"/"observada" DESPUÉS de
+// que el resto de la operación (generar PDF, subir a blob, emitir la
+// licencia) haya salido bien. Antes se marcaba primero y recién después se
+// intentaba lo demás — si algo fallaba en el medio (ej. la generación del
+// PDF), la inspección quedaba marcada conforme pero sin licencia emitida y
+// sin que el expediente avanzara, un estado inconsistente del que no había
+// forma de recuperarse sin tocar la base de datos a mano.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "inspector") {
@@ -62,69 +70,88 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { decision, observaciones, requiereCambioDocumento } = analisis.data;
   const hoy = aFechaIso(new Date());
-
-  await db
-    .update(inspecciones)
-    .set({
-      estado: decision === "conforme" ? "conforme" : "observada",
-      observaciones,
-      // Solo se marca en la primera visita (es la única que puede llevar a
-      // una segunda, ver más abajo) — igual queda forzado a false en el
-      // esquema del formulario si tipoInspeccion !== "primera".
-      requiereCambioDocumento: inspeccion.tipo === "primera" ? requiereCambioDocumento : false,
-      fechaRealizada: hoy,
-    })
-    .where(eq(inspecciones.id, inspeccion.id));
-
-  const [negocio] = await db.select().from(negocios).where(eq(negocios.id, expediente.negocioId)).limit(1);
+  // Solo se marca en la primera visita (es la única que puede llevar a una
+  // segunda) — igual queda forzado a false en el esquema del formulario si
+  // tipoInspeccion !== "primera".
+  const requiereCambioFinal = inspeccion.tipo === "primera" ? requiereCambioDocumento : false;
 
   if (decision === "conforme") {
     if (!puedeTransicionar(expediente.estado, "APROBADA")) {
       return NextResponse.json({ error: "El expediente no puede aprobarse desde su estado actual." }, { status: 409 });
     }
 
+    const [negocio] = await db.select().from(negocios).where(eq(negocios.id, expediente.negocioId)).limit(1);
+    if (!negocio) {
+      return NextResponse.json({ error: "No se encontró el negocio del expediente." }, { status: 500 });
+    }
+
     const numeroLicencia = await generarNumeroLicencia();
     const fechaVencimiento = sumarAnios(hoy, VIGENCIA_LICENCIA_ANIOS);
     const urlConsultaPublica = `${process.env.NEXT_PUBLIC_SITE_URL}/consulta?ruc=${negocio.ruc}`;
 
-    const pdfBuffer = await generarPdfLicencia({
-      numeroLicencia,
-      numeroExpediente: expediente.numeroExpediente ?? "",
-      razonSocial: negocio.razonSocial,
-      ruc: negocio.ruc,
-      representanteLegalNombre: expediente.representanteLegalNombre ?? "",
-      representanteLegalDni: expediente.representanteLegalDni ?? "",
-      nombreComercial: expediente.nombreComercial ?? "",
-      distrito: expediente.distrito ?? "",
-      direccionLocal: expediente.direccionLocal ?? "",
-      giroActividad: expediente.giroActividad ?? "",
-      fechaEmision: hoy,
-      fechaVencimiento,
-      urlConsultaPublica,
-    });
+    // Lo más propenso a fallar (generar el PDF, subir el blob) va ANTES de
+    // tocar la base de datos, para no dejar la inspección marcada conforme
+    // si esto revienta.
+    let pdfUrl: string;
+    try {
+      const pdfBuffer = await generarPdfLicencia({
+        numeroLicencia,
+        numeroExpediente: expediente.numeroExpediente ?? "",
+        razonSocial: negocio.razonSocial,
+        ruc: negocio.ruc,
+        representanteLegalNombre: expediente.representanteLegalNombre ?? "",
+        representanteLegalDni: expediente.representanteLegalDni ?? "",
+        nombreComercial: expediente.nombreComercial ?? "",
+        distrito: expediente.distrito ?? "",
+        direccionLocal: expediente.direccionLocal ?? "",
+        giroActividad: expediente.giroActividad ?? "",
+        fechaEmision: hoy,
+        fechaVencimiento,
+        urlConsultaPublica,
+      });
 
-    const blob = await put(`licencias/${numeroLicencia}.pdf`, pdfBuffer, {
-      access: "public",
-      contentType: "application/pdf",
-    });
+      // allowOverwrite: numeroLicencia se calcula contando filas de
+      // "licencias" (ver lib/numeracion.ts); si alguna vez se borra una fila
+      // sin borrar su PDF del blob, un número puede reutilizarse y chocar
+      // con un archivo huérfano en esa misma ruta. Sobrescribirlo es lo
+      // correcto: el contenido nuevo es el real, el viejo ya no debería existir.
+      const blob = await put(`licencias/${numeroLicencia}.pdf`, pdfBuffer, {
+        access: "public",
+        contentType: "application/pdf",
+        allowOverwrite: true,
+      });
+      pdfUrl = blob.url;
+    } catch (error) {
+      console.error("Error generando/subiendo el PDF de la licencia:", error);
+      return NextResponse.json(
+        { error: "No se pudo generar la licencia (PDF). Intenta registrar la decisión de nuevo." },
+        { status: 500 }
+      );
+    }
 
+    // Recién acá, con el PDF ya listo, se escribe todo en la base de datos.
     await db.insert(licencias).values({
       expedienteId,
       negocioId: expediente.negocioId,
       numeroLicencia,
       fechaEmision: hoy,
       fechaVencimiento,
-      pdfUrl: blob.url,
+      pdfUrl,
       estado: "VIGENTE",
     });
 
     await db.update(expedientes).set({ estado: "APROBADA", updatedAt: new Date() }).where(eq(expedientes.id, expedienteId));
 
+    await db
+      .update(inspecciones)
+      .set({ estado: "conforme", observaciones, requiereCambioDocumento: requiereCambioFinal, fechaRealizada: hoy })
+      .where(eq(inspecciones.id, inspeccion.id));
+
     if (expediente.emailContacto) {
       await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", true);
     }
 
-    return NextResponse.json({ ok: true, resultado: "aprobado", pdfUrl: blob.url });
+    return NextResponse.json({ ok: true, resultado: "aprobado", pdfUrl });
   }
 
   // decision === "observada"
@@ -139,6 +166,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .update(expedientes)
       .set({ estado: "SEGUNDA_INSPECCION_PROGRAMADA", updatedAt: new Date() })
       .where(eq(expedientes.id, expedienteId));
+
+    await db
+      .update(inspecciones)
+      .set({ estado: "observada", observaciones, requiereCambioDocumento: requiereCambioFinal, fechaRealizada: hoy })
+      .where(eq(inspecciones.id, inspeccion.id));
 
     if (expediente.emailContacto) {
       await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", false, observaciones);
@@ -162,6 +194,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   await db.update(expedientes).set({ estado: "RECHAZADA", updatedAt: new Date() }).where(eq(expedientes.id, expedienteId));
+
+  await db
+    .update(inspecciones)
+    .set({ estado: "observada", observaciones, requiereCambioDocumento: requiereCambioFinal, fechaRealizada: hoy })
+    .where(eq(inspecciones.id, inspeccion.id));
 
   if (expediente.emailContacto) {
     await enviarCorreoDecisionInspeccion(expediente.emailContacto, expediente.numeroExpediente ?? "", false, observaciones);
