@@ -59,8 +59,6 @@ export const esquemaDomicilio = z.object({
   nombreComercial: z.string().min(2, "Ingresa el nombre comercial del local."),
   representanteLegalNombre: z.string().min(3, "Ingresa el nombre del representante legal."),
   representanteLegalDni: dniPeru,
-  areaLocalM2: z.string().regex(/^\d+(\.\d{1,2})?$/, "Ingresa el área del local en m² (solo números)."),
-  horarioAtencion: z.string().min(3, "Indica el horario de atención del local."),
 });
 
 // Paso C: solo se pide el plano del local (requisito explícito del

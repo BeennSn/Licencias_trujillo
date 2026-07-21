@@ -71,8 +71,6 @@ export async function iniciarExpedienteRenovacion(negocioId: string): Promise<Re
       nombreComercial: expedienteAnterior?.nombreComercial,
       representanteLegalNombre: expedienteAnterior?.representanteLegalNombre,
       representanteLegalDni: expedienteAnterior?.representanteLegalDni,
-      areaLocalM2: expedienteAnterior?.areaLocalM2,
-      horarioAtencion: expedienteAnterior?.horarioAtencion,
       licenciaAnteriorId: licenciaAnterior.id,
     })
     .returning();
@@ -144,8 +142,6 @@ export async function completarRenovacionAprobada(params: {
     distrito: expedienteRenovacion.distrito ?? "",
     direccionLocal: expedienteRenovacion.direccionLocal ?? "",
     giroActividad: expedienteRenovacion.giroActividad ?? "",
-    areaLocalM2: expedienteRenovacion.areaLocalM2 ?? "",
-    horarioAtencion: expedienteRenovacion.horarioAtencion ?? "",
     fechaEmision: hoy,
     fechaVencimiento,
     urlConsultaPublica,

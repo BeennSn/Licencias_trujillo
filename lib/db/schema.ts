@@ -114,8 +114,6 @@ export const expedientes = pgTable("expedientes", {
   nombreComercial: varchar("nombre_comercial", { length: 255 }),
   representanteLegalNombre: varchar("representante_legal_nombre", { length: 255 }),
   representanteLegalDni: varchar("representante_legal_dni", { length: 8 }),
-  areaLocalM2: varchar("area_local_m2", { length: 20 }),
-  horarioAtencion: varchar("horario_atencion", { length: 100 }),
   licenciaAnteriorId: uuid("licencia_anterior_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

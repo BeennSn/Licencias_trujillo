@@ -25,8 +25,6 @@ export default function PasoDomicilio() {
     nombreComercial: string;
     representanteLegalNombre: string;
     representanteLegalDni: string;
-    areaLocalM2: string;
-    horarioAtencion: string;
     siguientePaso: string;
   } | null>(null);
 
@@ -44,8 +42,10 @@ export default function PasoDomicilio() {
   const [nombreComercial, setNombreComercial] = useState("");
   const [representanteLegalNombre, setRepresentanteLegalNombre] = useState("");
   const [representanteLegalDni, setRepresentanteLegalDni] = useState("");
-  const [areaLocalM2, setAreaLocalM2] = useState("");
-  const [horarioAtencion, setHorarioAtencion] = useState("");
+  // Si consultasPeru.ts encuentra un representante, el dato queda fijo (no
+  // editable) igual que distrito/dirección — solo se deja editable cuando
+  // no se pudo autocompletar, para que el negocio lo complete a mano.
+  const [representanteAutocompletado, setRepresentanteAutocompletado] = useState(false);
   const [emailContacto, setEmailContacto] = useState("");
   const [telefonoContacto, setTelefonoContacto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +68,6 @@ export default function PasoDomicilio() {
             nombreComercial: datos.expediente.nombreComercial ?? "",
             representanteLegalNombre: datos.expediente.representanteLegalNombre ?? "",
             representanteLegalDni: datos.expediente.representanteLegalDni ?? "",
-            areaLocalM2: datos.expediente.areaLocalM2 ?? "",
-            horarioAtencion: datos.expediente.horarioAtencion ?? "",
             siguientePaso: pasoPorDefecto(datos.expediente),
           });
           setCargandoInicial(false);
@@ -81,7 +79,7 @@ export default function PasoDomicilio() {
         if (lista.length === 0) setSinDireccionesSunat(true);
         setCargandoInicial(false);
 
-        // Autocompletar representante legal (ver lib/apiPeruDev.ts): nunca
+        // Autocompletar representante legal (ver lib/consultasPeru.ts): nunca
         // bloquea nada si no se encuentra, el negocio lo completa a mano.
         const ruc: string | undefined = datos.negocio?.ruc;
         if (ruc) {
@@ -91,6 +89,7 @@ export default function PasoDomicilio() {
               if (datosRepresentante.representante) {
                 setRepresentanteLegalNombre(datosRepresentante.representante.nombre);
                 setRepresentanteLegalDni(datosRepresentante.representante.dni);
+                setRepresentanteAutocompletado(true);
               }
             })
             .catch(() => {});
@@ -139,8 +138,6 @@ export default function PasoDomicilio() {
         nombreComercial,
         representanteLegalNombre,
         representanteLegalDni,
-        areaLocalM2,
-        horarioAtencion,
       }),
     });
 
@@ -186,8 +183,6 @@ export default function PasoDomicilio() {
                 <p><span className="font-medium">Giro:</span> {domicilioBloqueado.giroActividad}</p>
                 <p><span className="font-medium">Nombre comercial:</span> {domicilioBloqueado.nombreComercial}</p>
                 <p><span className="font-medium">Representante legal:</span> {domicilioBloqueado.representanteLegalNombre} (DNI {domicilioBloqueado.representanteLegalDni})</p>
-                <p><span className="font-medium">Área del local:</span> {domicilioBloqueado.areaLocalM2} m²</p>
-                <p><span className="font-medium">Horario de atención:</span> {domicilioBloqueado.horarioAtencion}</p>
               </div>
               <Button
                 onClick={() => router.push(`/solicitud/${expedienteId}/${domicilioBloqueado.siguientePaso}`)}
@@ -273,6 +268,7 @@ export default function PasoDomicilio() {
                   <Input
                     label="Nombre del representante legal"
                     required
+                    readOnly={representanteAutocompletado}
                     value={representanteLegalNombre}
                     onChange={(e) => setRepresentanteLegalNombre(e.target.value)}
                   />
@@ -282,25 +278,9 @@ export default function PasoDomicilio() {
                     inputMode="numeric"
                     maxLength={8}
                     required
+                    readOnly={representanteAutocompletado}
                     value={representanteLegalDni}
                     onChange={(e) => setRepresentanteLegalDni(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                  />
-
-                  <Input
-                    label="Área del local (m²)"
-                    placeholder="25"
-                    inputMode="decimal"
-                    required
-                    value={areaLocalM2}
-                    onChange={(e) => setAreaLocalM2(e.target.value.replace(/[^\d.]/g, ""))}
-                  />
-
-                  <Input
-                    label="Horario de atención"
-                    placeholder="9:00 a 22:00 horas"
-                    required
-                    value={horarioAtencion}
-                    onChange={(e) => setHorarioAtencion(e.target.value)}
                   />
 
                   <Input

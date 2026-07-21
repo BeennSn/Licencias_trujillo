@@ -47,8 +47,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       distrito: expediente.distrito ?? "",
       direccionLocal: expediente.direccionLocal ?? "",
       giroActividad: expediente.giroActividad ?? "",
-      areaLocalM2: expediente.areaLocalM2 ?? "",
-      horarioAtencion: expediente.horarioAtencion ?? "",
       fechaEmision: licencia.fechaEmision,
       fechaVencimiento: licencia.fechaVencimiento,
       urlConsultaPublica,

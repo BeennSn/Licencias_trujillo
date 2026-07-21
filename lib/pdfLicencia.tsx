@@ -98,8 +98,6 @@ export type DatosLicenciaPdf = {
   distrito: string;
   direccionLocal: string;
   giroActividad: string;
-  areaLocalM2: string;
-  horarioAtencion: string;
   fechaEmision: string;
   fechaVencimiento: string;
   urlConsultaPublica: string;
@@ -176,14 +174,6 @@ function DocumentoLicencia({
           <View style={estilos.fila}>
             <Text style={estilos.etiqueta}>Zonificación:</Text>
             <Text style={estilos.valor}>{DATO_CATASTRAL_PENDIENTE}</Text>
-          </View>
-          <View style={estilos.fila}>
-            <Text style={estilos.etiqueta}>Área:</Text>
-            <Text style={estilos.valor}>{datos.areaLocalM2} m2</Text>
-          </View>
-          <View style={estilos.fila}>
-            <Text style={estilos.etiqueta}>Horario de Atención:</Text>
-            <Text style={estilos.valor}>{datos.horarioAtencion}</Text>
           </View>
           <View style={estilos.fila}>
             <Text style={estilos.etiqueta}>Visto el Expediente:</Text>
