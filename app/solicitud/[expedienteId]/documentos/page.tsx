@@ -67,7 +67,11 @@ export default function PasoDocumentos() {
   // "siguiente paso" del wizard al que avanzar — solo se guarda el cambio y
   // se vuelve al panel desde donde se accedió.
   const corrigiendoEntreInspecciones = estadoExpediente === "SEGUNDA_INSPECCION_PROGRAMADA";
-  const panelDeRetorno = sesion?.user?.rol === "cajero" ? "/cajero" : "/negocio";
+  // El negocio ya no tiene cuenta: llega acá reingresando su RUC (ver
+  // app/api/solicitudes/route.ts), así que al terminar vuelve a la pantalla
+  // de confirmación de SU propio expediente, no a un panel logueado.
+  const panelDeRetorno =
+    sesion?.user?.rol === "cajero" ? "/cajero" : `/solicitud/${expedienteId}/confirmacion`;
 
   if (verificandoAcceso) {
     return (

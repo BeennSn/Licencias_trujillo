@@ -1,4 +1,4 @@
-const PASOS = ["RUC", "Domicilio", "Documentos", "Pago", "Cuenta", "Listo"];
+const PASOS = ["RUC", "Domicilio", "Documentos", "Pago", "Listo"];
 
 export function StepIndicator({ pasoActual }: { pasoActual: number }) {
   return (

@@ -89,7 +89,7 @@ export default function PasoPago() {
       return;
     }
 
-    router.push(`/solicitud/${expedienteId}/cuenta`);
+    router.push(`/solicitud/${expedienteId}/confirmacion`);
   }
 
   if (verificandoAcceso) {

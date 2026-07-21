@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Este RUC ya tiene una solicitud en trámite con una inspección técnica programada. Ingresa con tu cuenta para ver el estado del expediente.",
+            "Este RUC ya tiene una solicitud en trámite con una inspección técnica programada. Consulta el estado con tu RUC o tu N° de expediente.",
           tramiteBloqueado: true,
           numeroExpediente: expedienteEnTramite.numeroExpediente,
         },

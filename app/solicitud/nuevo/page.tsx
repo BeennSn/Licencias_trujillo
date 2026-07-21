@@ -70,7 +70,7 @@ export default function PasoRuc() {
 
     if (!respuesta.ok) {
       // Ya tiene una inspección programada (o más adelante): no hay nada
-      // que completar en el wizard, debe entrar con su cuenta.
+      // que completar en el wizard, debe consultar el estado por RUC.
       if (datos.tramiteBloqueado) {
         setTramiteBloqueado(datos.error);
         return;
@@ -156,8 +156,8 @@ export default function PasoRuc() {
           {tramiteBloqueado && (
             <div className="rounded-md border border-blue-300 bg-blue-50 p-4 space-y-3 text-sm">
               <p className="text-blue-800">{tramiteBloqueado}</p>
-              <Link href="/login">
-                <Button className="w-full">Ingresar a mi cuenta</Button>
+              <Link href={`/consulta?ruc=${encodeURIComponent(ruc)}`}>
+                <Button className="w-full">Consultar el estado de mi trámite</Button>
               </Link>
             </div>
           )}

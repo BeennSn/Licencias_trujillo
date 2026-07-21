@@ -37,14 +37,6 @@ export default function PaginaInicio() {
             Ingresar como inspector / administrador
           </Link>
         </div>
-
-        <p className="text-xs text-gray-400 pt-6">
-          ¿Ya tienes una solicitud en trámite y quieres ver tu expediente completo?{" "}
-          <Link href="/login" className="underline hover:text-gray-600">
-            Ingresa con tu correo y contraseña
-          </Link>
-          .
-        </p>
       </div>
     </main>
   );

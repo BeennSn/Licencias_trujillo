@@ -54,7 +54,7 @@ export async function enviarCorreoInspeccionProgramada(
     destinatario,
     `Inspección técnica programada - Expediente ${numeroExpediente}`,
     `<p>Se programó la ${etiquetaTipo} inspección técnica de tu local para el ${textoFechaHora(fechaIso, horaTexto)}.</p>
-     <p>Puedes ver el detalle de tu expediente ingresando a tu cuenta.</p>`
+     <p>Puedes consultar el detalle de tu expediente con tu RUC o N° de expediente en la sección de consulta del sistema.</p>`
   );
 }
 
@@ -131,7 +131,7 @@ export async function enviarCorreoLicenciaVencida(destinatario: string, razonSoc
     destinatario,
     `Tu licencia de funcionamiento venció - N° ${numeroLicencia}`,
     `<p>La licencia de funcionamiento de <strong>${razonSocial}</strong> (N° ${numeroLicencia}) ya venció.</p>
-     <p>Inicia el trámite de renovación desde tu cuenta para regularizar tu situación.</p>`
+     <p>Acércate a la municipalidad para iniciar el trámite de renovación.</p>`
   );
 }
 
@@ -146,7 +146,7 @@ export async function enviarCorreoRecordatorioRenovacion(
     destinatario,
     "Tu licencia de funcionamiento vence pronto",
     `<p>La licencia de funcionamiento de <strong>${razonSocial}</strong> vence el <strong>${fechaVencimiento}</strong>.</p>
-     <p>Inicia el trámite de renovación desde tu cuenta antes de esa fecha para evitar que tu licencia quede marcada como vencida.</p>`
+     <p>Acércate a la municipalidad antes de esa fecha para iniciar el trámite de renovación y evitar que tu licencia quede marcada como vencida.</p>`
   );
 }
 
@@ -160,8 +160,8 @@ export async function enviarCorreoDecisionInspeccion(
     ? `Licencia aprobada - Expediente ${numeroExpediente}`
     : `Observaciones en tu inspección - Expediente ${numeroExpediente}`;
   const cuerpo = aprobado
-    ? `<p>Tu inspección técnica fue conforme. Ya puedes descargar tu licencia de funcionamiento en formato PDF desde tu cuenta.</p>`
+    ? `<p>Tu inspección técnica fue conforme. Ya puedes descargar tu licencia de funcionamiento en formato PDF consultando tu RUC o N° de expediente en el sistema.</p>`
     : `<p>Tu inspección técnica tuvo observaciones:</p><p>${observaciones ?? ""}</p>
-       <p>Se programará automáticamente una nueva visita si corresponde. Revisa el detalle en tu cuenta.</p>`;
+       <p>Se programará automáticamente una nueva visita si corresponde. Revisa el detalle consultando tu RUC o N° de expediente en el sistema.</p>`;
   await enviarCorreo(destinatario, asunto, cuerpo);
 }

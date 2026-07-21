@@ -33,13 +33,14 @@ export default async function PasoConfirmacion({
   return (
     <main className="flex-1 flex items-center justify-center px-4 py-16 bg-gray-50">
       <div className="w-full max-w-lg">
-        <StepIndicator pasoActual={6} />
+        <StepIndicator pasoActual={5} />
         <Card className="space-y-6 text-center">
           <div className="text-green-600 text-4xl">✓</div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">¡Solicitud registrada!</h1>
             <p className="text-sm text-gray-500">
-              Guarda tu número de expediente, lo necesitarás para consultar el estado de tu trámite.
+              Guarda tu número de expediente (o tu RUC): con eso vas a poder consultar el estado de tu trámite y,
+              más adelante, descargar tu licencia. No necesitas crear ninguna cuenta.
             </p>
           </div>
 
@@ -66,9 +67,6 @@ export default async function PasoConfirmacion({
               className="text-blue-700 hover:underline text-sm"
             >
               Consultar el estado de mi trámite
-            </Link>
-            <Link href="/login" className="text-blue-700 hover:underline text-sm">
-              Ingresar a mi cuenta
             </Link>
             <Link href="/" className="text-gray-500 hover:underline text-sm">
               Volver al inicio

@@ -40,11 +40,6 @@ export const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: EstadoExpediente[] = [
   "SEGUNDA_INSPECCION_PROGRAMADA",
 ];
 
-// Estados en los que el pago (paso D) todavía no quedó aprobado. Se usa para
-// impedir que se salten pasos por URL directa (ej. crear la cuenta del paso
-// E sin haber pagado).
-export const ESTADOS_SIN_PAGO_APROBADO: EstadoExpediente[] = ["BORRADOR", "DOCUMENTOS_COMPLETOS", "PAGO_PENDIENTE"];
-
 // Estados en los que se puede pagar el derecho de trámite (paso D). Ojo:
 // DOCUMENTOS_COMPLETOS también está en ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS
 // — mientras el pago no arranca, tanto el paso de documentos como el de pago

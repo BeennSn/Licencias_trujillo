@@ -83,11 +83,6 @@ export const esquemaDocumento = z
     path: ["enTramite"],
   });
 
-export const esquemaCuenta = z.object({
-  email: correoNoTemporal,
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
-});
-
 // Usado solo en modo simulado (sin MERCADOPAGO_ACCESS_TOKEN configurado);
 // con credenciales reales, el pago va por Checkout Pro (ver
 // esquemaIniciarPagoMercadoPago) y no necesita medioPago/tokenPago del

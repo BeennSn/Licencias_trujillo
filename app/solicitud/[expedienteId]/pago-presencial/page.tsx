@@ -76,7 +76,7 @@ export default function PasoPagoPresencial() {
       return;
     }
 
-    router.push(`/solicitud/${expedienteId}/cuenta`);
+    router.push(`/solicitud/${expedienteId}/confirmacion`);
   }
 
   if (verificandoAcceso || !expediente) {

@@ -35,7 +35,7 @@ function ResultadoPagoContenido() {
       .then((datos) => {
         if (datos.ok) {
           setEstado("aprobado");
-          setTimeout(() => router.push(`/solicitud/${expedienteId}/cuenta`), 1500);
+          setTimeout(() => router.push(`/solicitud/${expedienteId}/confirmacion`), 1500);
           return;
         }
         setEstado(datos.estado === "pending" || datos.estado === "in_process" ? "pendiente" : "rechazado");
