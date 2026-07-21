@@ -23,7 +23,6 @@ export async function notificarInspeccionProgramada(params: {
       expediente.emailContacto,
       expediente.numeroExpediente ?? "",
       inspeccion.fechaProgramada,
-      turno,
       inspeccion.tipo
     );
   }

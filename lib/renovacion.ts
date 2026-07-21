@@ -31,6 +31,7 @@ import { aFechaIso } from "./diasHabilesPeru";
 import { VIGENCIA_LICENCIA_ANIOS, MONTO_TRAMITE_SOLES } from "./constantes";
 import { puedeTransicionarLicencia } from "./estadosLicencia";
 import { enviarCorreoDecisionInspeccion } from "./email";
+import { generarComprobantePago } from "./comprobante";
 import type { ResultadoCobro, MedioPago } from "./pagos/mercadopago";
 
 export type ResultadoIniciarRenovacion =
@@ -79,7 +80,7 @@ export async function iniciarExpedienteRenovacion(negocioId: string): Promise<Re
 }
 
 export type ResultadoCompletarRenovacion =
-  | { ok: true; pdfUrl: string | null; fechaVencimiento: string }
+  | { ok: true; pdfUrl: string | null; fechaVencimiento: string; comprobanteUrl: string | null }
   | { ok: false; error: string };
 
 export type PagoRealizado = { medioPago: MedioPago; monto: number; referenciaPago: string };
@@ -101,7 +102,8 @@ export async function completarRenovacionAprobada(params: {
   // los dos, o el negocio recargando la página de resultado).
   const [licenciaExistente] = await db.select().from(licencias).where(eq(licencias.expedienteId, expedienteId)).limit(1);
   if (licenciaExistente) {
-    return { ok: true, pdfUrl: licenciaExistente.pdfUrl, fechaVencimiento: licenciaExistente.fechaVencimiento };
+    // El comprobante ya se generó y mandó en la llamada original.
+    return { ok: true, pdfUrl: licenciaExistente.pdfUrl, fechaVencimiento: licenciaExistente.fechaVencimiento, comprobanteUrl: null };
   }
 
   const [expedienteRenovacion] = await db.select().from(expedientes).where(eq(expedientes.id, expedienteId)).limit(1);
@@ -125,6 +127,12 @@ export async function completarRenovacionAprobada(params: {
       registradoPorId,
     }))
   );
+
+  const comprobante = await generarComprobantePago({
+    expedienteId,
+    detallePagos: pagosRealizados.map((pago) => ({ medioPago: pago.medioPago, monto: pago.monto })),
+    cajeroId: registradoPorId,
+  });
 
   const hoy = aFechaIso(new Date());
   const fechaVencimiento = sumarAnios(hoy, VIGENCIA_LICENCIA_ANIOS);
@@ -187,11 +195,11 @@ export async function completarRenovacionAprobada(params: {
 
   await enviarCorreoDecisionInspeccion(emailNotificacion, expedienteRenovacion.numeroExpediente ?? "", true);
 
-  return { ok: true, pdfUrl: licenciaNueva.pdfUrl, fechaVencimiento };
+  return { ok: true, pdfUrl: licenciaNueva.pdfUrl, fechaVencimiento, comprobanteUrl: comprobante?.pdfUrl ?? null };
 }
 
 export type ResultadoRenovacion =
-  | { ok: true; pdfUrl: string | null; fechaVencimiento: string }
+  | { ok: true; pdfUrl: string | null; fechaVencimiento: string; comprobanteUrl: string | null }
   | { ok: false; error: string; status: number; pagoId?: string };
 
 // Resuelve el pago de forma síncrona (efectivo en caja o modo simulado) y
@@ -242,5 +250,10 @@ export async function ejecutarRenovacion(params: {
     return { ok: false, error: completado.error, status: 500 };
   }
 
-  return { ok: true, pdfUrl: completado.pdfUrl, fechaVencimiento: completado.fechaVencimiento };
+  return {
+    ok: true,
+    pdfUrl: completado.pdfUrl,
+    fechaVencimiento: completado.fechaVencimiento,
+    comprobanteUrl: completado.comprobanteUrl,
+  };
 }

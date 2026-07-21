@@ -9,6 +9,7 @@ import { notificarInspeccionProgramada } from "@/lib/notificacionesInspeccion";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
 import { exigirCajaAbierta } from "@/lib/caja";
+import { generarComprobantePago } from "@/lib/comprobante";
 
 const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "yape", "mixto"] as const;
 type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
@@ -80,6 +81,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const referencia = numeroOperacion ?? `caja_${sesion.user.id}_${Date.now()}`;
+  const detallePagos: { medioPago: "efectivo" | "yape"; monto: number }[] = [];
 
   if (medioPago === "mixto") {
     const filas = [];
@@ -93,6 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         canal: "presencial" as const,
         registradoPorId: sesion.user.id,
       });
+      detallePagos.push({ medioPago: "efectivo", monto: montoEfectivo });
     }
     if (montoYape > 0) {
       filas.push({
@@ -104,6 +107,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         canal: "presencial" as const,
         registradoPorId: sesion.user.id,
       });
+      detallePagos.push({ medioPago: "yape", monto: montoYape });
     }
     await db.insert(pagos).values(filas);
   } else {
@@ -116,7 +120,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       canal: "presencial",
       registradoPorId: sesion.user.id,
     });
+    detallePagos.push({ medioPago, monto: MONTO_TRAMITE_SOLES });
   }
+
+  const comprobante = await generarComprobantePago({ expedienteId: id, detallePagos, cajeroId: sesion.user.id });
 
   if (puedeTransicionar("PAGO_PENDIENTE", "PAGO_APROBADO")) {
     await db.update(expedientes).set({ estado: "PAGO_APROBADO" }).where(eq(expedientes.id, id));
@@ -134,5 +141,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({
     ok: true,
     fechaInspeccion: inspeccion.fechaProgramada,
+    comprobanteUrl: comprobante?.pdfUrl ?? null,
   });
 }

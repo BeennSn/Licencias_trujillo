@@ -9,7 +9,12 @@ import { CamposCobroPresencial } from "@/components/cajero/CamposCobroPresencial
 import { useCobroPresencial } from "@/lib/hooks/useCobroPresencial";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 
-type ResultadoRenovacion = { razonSocial: string; pdfUrl: string | null; fechaVencimiento: string };
+type ResultadoRenovacion = {
+  razonSocial: string;
+  pdfUrl: string | null;
+  fechaVencimiento: string;
+  comprobanteUrl: string | null;
+};
 type Renovacion = { expedienteId: string; razonSocial: string; monto: number };
 
 export default function PaginaCajeroRenovar() {
@@ -120,7 +125,12 @@ export default function PaginaCajeroRenovar() {
       return;
     }
 
-    setResultado(datos);
+    setResultado({
+      razonSocial: renovacion!.razonSocial,
+      pdfUrl: datos.pdfUrl ?? null,
+      fechaVencimiento: datos.fechaVencimiento,
+      comprobanteUrl: datos.comprobanteUrl ?? null,
+    });
   }
 
   if (verificandoCaja) {
@@ -155,6 +165,11 @@ export default function PaginaCajeroRenovar() {
           {resultado.pdfUrl && (
             <a href={resultado.pdfUrl} target="_blank" rel="noreferrer">
               <Button variante="secundario" className="w-full">Descargar PDF</Button>
+            </a>
+          )}
+          {resultado.comprobanteUrl && (
+            <a href={resultado.comprobanteUrl} target="_blank" rel="noreferrer">
+              <Button variante="secundario" className="w-full">Descargar comprobante de pago</Button>
             </a>
           )}
           <Button onClick={reiniciar} className="w-full">Registrar otra renovación</Button>

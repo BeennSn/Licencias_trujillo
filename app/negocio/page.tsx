@@ -144,8 +144,7 @@ export default async function PaginaNegocio() {
               {inspeccionesActuales.map((insp) => (
                 <li key={insp.id} className="border rounded p-2">
                   <p>
-                    {insp.tipo === "primera" ? "1ra visita" : "2da visita"} · {insp.fechaProgramada}
-                    {insp.turno ? ` · Turno ${insp.turno}` : ""} ·{" "}
+                    {insp.tipo === "primera" ? "1ra visita" : "2da visita"} · {insp.fechaProgramada} ·{" "}
                     <Badge tono={insp.estado === "conforme" ? "verde" : insp.estado === "observada" ? "rojo" : "azul"}>
                       {insp.estado}
                     </Badge>

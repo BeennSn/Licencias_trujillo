@@ -22,6 +22,7 @@ function ResultadoRenovacionContenido() {
     paymentId ? null : "No se recibió información del pago."
   );
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!paymentId) return;
@@ -36,6 +37,7 @@ function ResultadoRenovacionContenido() {
         if (datos.ok) {
           setEstado("aprobado");
           setPdfUrl(datos.pdfUrl ?? null);
+          setComprobanteUrl(datos.comprobanteUrl ?? null);
           return;
         }
         setEstado(datos.estado === "pending" || datos.estado === "in_process" ? "pendiente" : "rechazado");
@@ -59,6 +61,11 @@ function ResultadoRenovacionContenido() {
             {pdfUrl && (
               <a href={pdfUrl} target="_blank" rel="noreferrer">
                 <Button className="w-full">Descargar nueva licencia (PDF)</Button>
+              </a>
+            )}
+            {comprobanteUrl && (
+              <a href={comprobanteUrl} target="_blank" rel="noreferrer">
+                <Button variante="secundario" className="w-full">Descargar comprobante de pago</Button>
               </a>
             )}
           </>

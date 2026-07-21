@@ -2,8 +2,9 @@ import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
-import { expedientes, inspecciones } from "@/lib/db/schema";
+import { expedientes, inspecciones, comprobantesPago } from "@/lib/db/schema";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { ETIQUETAS_ESTADO_EXPEDIENTE } from "@/lib/estadosExpediente";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
 
@@ -23,6 +24,13 @@ export default async function PasoConfirmacion({
     .from(inspecciones)
     .where(and(eq(inspecciones.expedienteId, expedienteId), eq(inspecciones.tipo, "primera")))
     .orderBy(desc(inspecciones.createdAt))
+    .limit(1);
+
+  const [comprobante] = await db
+    .select()
+    .from(comprobantesPago)
+    .where(eq(comprobantesPago.expedienteId, expedienteId))
+    .orderBy(desc(comprobantesPago.createdAt))
     .limit(1);
 
   if (!expediente) {
@@ -54,7 +62,6 @@ export default async function PasoConfirmacion({
               <p>
                 <span className="font-medium">Fecha de tu primera inspección técnica:</span>{" "}
                 {inspeccion.fechaProgramada}
-                {inspeccion.turno ? ` (Turno ${inspeccion.turno})` : ""}
               </p>
             )}
           </div>
@@ -63,6 +70,14 @@ export default async function PasoConfirmacion({
             Un inspector municipal visitará tu local en la fecha indicada para verificar tu documentación.
             Te notificaremos por correo cualquier novedad.
           </p>
+
+          {comprobante && (
+            <a href={comprobante.pdfUrl} target="_blank" rel="noreferrer">
+              <Button variante="secundario" className="w-full">
+                Descargar comprobante de pago
+              </Button>
+            </a>
+          )}
 
           <div className="flex flex-col gap-2">
             {esCajero ? (

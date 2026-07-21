@@ -89,12 +89,7 @@ export async function GET(request: Request) {
     const turno = inspeccion.turno ?? null;
 
     if (expediente?.emailContacto) {
-      await enviarCorreoRecordatorioInspeccionHoy(
-        expediente.emailContacto,
-        expediente.numeroExpediente ?? "",
-        turno,
-        inspeccion.tipo
-      );
+      await enviarCorreoRecordatorioInspeccionHoy(expediente.emailContacto, expediente.numeroExpediente ?? "", inspeccion.tipo);
     }
 
     const [inspector] = await db.select().from(usuarios).where(eq(usuarios.id, inspeccion.inspectorId)).limit(1);

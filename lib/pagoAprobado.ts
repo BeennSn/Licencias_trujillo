@@ -10,11 +10,12 @@ import { expedientes, pagos } from "./db/schema";
 import { puedeTransicionar } from "./estadosExpediente";
 import { programarPrimeraInspeccion } from "./agenda";
 import { notificarInspeccionProgramada } from "./notificacionesInspeccion";
+import { generarComprobantePago } from "./comprobante";
 import { MONTO_TRAMITE_SOLES } from "./constantes";
 import { aFechaIso } from "./diasHabilesPeru";
 import type { MedioPago } from "./pagos/mercadopago";
 
-export type ResultadoCompletarPago = { ok: true } | { ok: false; error: string };
+export type ResultadoCompletarPago = { ok: true; comprobanteUrl: string | null } | { ok: false; error: string };
 
 export async function completarPagoTramiteAprobado(params: {
   expedienteId: string;
@@ -25,7 +26,9 @@ export async function completarPagoTramiteAprobado(params: {
 
   const [yaRegistrado] = await db.select().from(pagos).where(eq(pagos.referenciaPago, referenciaPago)).limit(1);
   if (yaRegistrado) {
-    return { ok: true }; // ya se procesó este pago antes (redirección + webhook llegaron ambos)
+    // Ya se procesó este pago antes (redirección + webhook llegaron ambos):
+    // el comprobante ya se generó y mandó en esa primera llamada.
+    return { ok: true, comprobanteUrl: null };
   }
 
   const [expediente] = await db.select().from(expedientes).where(eq(expedientes.id, expedienteId)).limit(1);
@@ -42,12 +45,17 @@ export async function completarPagoTramiteAprobado(params: {
     canal: "web",
   });
 
+  const comprobante = await generarComprobantePago({
+    expedienteId,
+    detallePagos: [{ medioPago, monto: MONTO_TRAMITE_SOLES }],
+  });
+
   // El expediente ya podría estar más adelante que PAGO_PENDIENTE si esta
   // función se llama dos veces por dos vías distintas (poco probable dado
   // el chequeo de arriba, pero de todas formas no se reagenda una segunda
   // inspección por error).
   if (expediente.estado !== "PAGO_PENDIENTE") {
-    return { ok: true };
+    return { ok: true, comprobanteUrl: comprobante?.pdfUrl ?? null };
   }
 
   if (puedeTransicionar(expediente.estado, "PAGO_APROBADO")) {
@@ -63,5 +71,5 @@ export async function completarPagoTramiteAprobado(params: {
 
   await notificarInspeccionProgramada({ inspeccion, expediente });
 
-  return { ok: true };
+  return { ok: true, comprobanteUrl: comprobante?.pdfUrl ?? null };
 }

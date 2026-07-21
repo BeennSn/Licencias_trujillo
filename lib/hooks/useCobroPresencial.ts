@@ -23,7 +23,13 @@ export function useCobroPresencial(montoTotal: number) {
   const [montoEfectivo, setMontoEfectivo] = useState("");
   const [montoYape, setMontoYape] = useState("");
   const [montoRecibido, setMontoRecibido] = useState("");
-  const [numeroOperacion, setNumeroOperacion] = useState("");
+  const [numeroOperacion, setNumeroOperacionInterno] = useState("");
+
+  // El número de operación de Yape es siempre numérico — se filtra cualquier
+  // otro caracter al tipear en vez de validar recién al enviar.
+  function cambiarNumeroOperacion(valor: string) {
+    setNumeroOperacionInterno(valor.replace(/\D/g, ""));
+  }
 
   function cambiarMedioPago(nuevo: MedioPagoPresencial) {
     setMedioPagoInterno(nuevo);
@@ -31,7 +37,7 @@ export function useCobroPresencial(montoTotal: number) {
     setMontoEfectivo("");
     setMontoYape("");
     setMontoRecibido("");
-    setNumeroOperacion("");
+    setNumeroOperacionInterno("");
   }
 
   // Vuelve todo a su estado inicial — usado cuando el cajero encadena un
@@ -41,22 +47,27 @@ export function useCobroPresencial(montoTotal: number) {
     cambiarMedioPago("efectivo");
   }
 
-  function montoComplementario(valor: string): string {
+  // Acota un monto tipeado a [0, montoTotal] — no tiene sentido que la
+  // parte en efectivo o Yape de un mixto sea mayor que el total a cobrar
+  // (ej. escribir 200 cuando el trámite cuesta 180).
+  function acotarMonto(valor: string): number {
     const num = Number(valor);
-    const acotado = valor.trim() !== "" && Number.isFinite(num) && num >= 0 ? Math.min(num, montoTotal) : 0;
-    return (montoTotal - acotado).toFixed(2);
+    if (valor.trim() === "" || !Number.isFinite(num) || num < 0) return 0;
+    return Math.min(num, montoTotal);
   }
 
   function cambiarEfectivo(valor: string) {
     setCampoActivo("efectivo");
-    setMontoEfectivo(valor);
-    setMontoYape(montoComplementario(valor));
+    const acotado = acotarMonto(valor);
+    setMontoEfectivo(valor.trim() === "" ? "" : acotado === Number(valor) ? valor : acotado.toFixed(2));
+    setMontoYape((montoTotal - acotado).toFixed(2));
   }
 
   function cambiarYape(valor: string) {
     setCampoActivo("yape");
-    setMontoYape(valor);
-    setMontoEfectivo(montoComplementario(valor));
+    const acotado = acotarMonto(valor);
+    setMontoYape(valor.trim() === "" ? "" : acotado === Number(valor) ? valor : acotado.toFixed(2));
+    setMontoEfectivo((montoTotal - acotado).toFixed(2));
   }
 
   const sumaMixto = (Number(montoEfectivo) || 0) + (Number(montoYape) || 0);
@@ -117,7 +128,7 @@ export function useCobroPresencial(montoTotal: number) {
     vuelto,
     errorVuelto,
     numeroOperacion,
-    setNumeroOperacion,
+    cambiarNumeroOperacion,
     validarParaEnviar,
     reiniciar,
   };

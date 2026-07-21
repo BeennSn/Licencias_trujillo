@@ -4,7 +4,7 @@
 // es aceptable a esta escala (no hay miles de solicitudes simultáneas).
 import { sql } from "drizzle-orm";
 import { db } from "./db/client";
-import { expedientes, licencias } from "./db/schema";
+import { expedientes, licencias, comprobantesPago } from "./db/schema";
 
 export async function generarNumeroExpediente(): Promise<string> {
   const anio = new Date().getFullYear();
@@ -26,4 +26,15 @@ export async function generarNumeroLicencia(): Promise<string> {
 
   const correlativo = (Number(total) + 1).toString().padStart(6, "0");
   return `LIC-${anio}-${correlativo}`;
+}
+
+export async function generarNumeroComprobante(): Promise<string> {
+  const anio = new Date().getFullYear();
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(comprobantesPago)
+    .where(sql`extract(year from ${comprobantesPago.createdAt}) = ${anio}`);
+
+  const correlativo = (Number(total) + 1).toString().padStart(6, "0");
+  return `COMP-${anio}-${correlativo}`;
 }

@@ -96,5 +96,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: completado.error }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, pdfUrl: completado.pdfUrl, fechaVencimiento: completado.fechaVencimiento });
+  return NextResponse.json({
+    ok: true,
+    pdfUrl: completado.pdfUrl,
+    fechaVencimiento: completado.fechaVencimiento,
+    comprobanteUrl: completado.comprobanteUrl,
+  });
 }

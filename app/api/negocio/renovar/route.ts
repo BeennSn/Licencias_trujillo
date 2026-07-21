@@ -80,5 +80,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: resultado.error, pagoId: resultado.pagoId }, { status: resultado.status });
   }
 
-  return NextResponse.json({ ok: true, pdfUrl: resultado.pdfUrl, fechaVencimiento: resultado.fechaVencimiento });
+  return NextResponse.json({
+    ok: true,
+    pdfUrl: resultado.pdfUrl,
+    fechaVencimiento: resultado.fechaVencimiento,
+    comprobanteUrl: resultado.comprobanteUrl,
+  });
 }

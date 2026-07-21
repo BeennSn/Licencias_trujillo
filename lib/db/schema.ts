@@ -230,6 +230,24 @@ export const cajas = pgTable("cajas", {
   cerradaEn: timestamp("cerrada_en"),
 });
 
+// Comprobante de pago (factura interna, no fiscal) que se genera solo al
+// completarse un pago (ver lib/comprobante.ts): una fila por venta, aunque
+// el pago haya sido mixto (varias filas en "pagos"). Se sube a Vercel Blob
+// igual que la licencia y se manda por correo al negocio en el momento.
+export const comprobantesPago = pgTable("comprobantes_pago", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  numeroComprobante: varchar("numero_comprobante", { length: 30 }).notNull().unique(),
+  expedienteId: uuid("expediente_id")
+    .notNull()
+    .references(() => expedientes.id),
+  negocioId: uuid("negocio_id")
+    .notNull()
+    .references(() => negocios.id),
+  monto: numeric("monto", { precision: 10, scale: 2 }).notNull(),
+  pdfUrl: text("pdf_url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Tokens de un solo uso para recuperar contraseña (expiran en 1 hora).
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),

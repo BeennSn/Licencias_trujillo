@@ -26,7 +26,7 @@ export function CamposCobroPresencial({ cobro, montoTotal }: { cobro: CobroPrese
     vuelto,
     errorVuelto,
     numeroOperacion,
-    setNumeroOperacion,
+    cambiarNumeroOperacion,
   } = cobro;
 
   return (
@@ -118,8 +118,9 @@ export function CamposCobroPresencial({ cobro, montoTotal }: { cobro: CobroPrese
         <Input
           label="Número de operación (Yape)"
           placeholder="Ej. 000123456"
+          inputMode="numeric"
           value={numeroOperacion}
-          onChange={(e) => setNumeroOperacion(e.target.value)}
+          onChange={(e) => cambiarNumeroOperacion(e.target.value)}
         />
       )}
     </>
