@@ -13,9 +13,16 @@ export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedient
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
+  const tieneObservacion = observaciones.trim().length > 0 || requiereCambioDocumento;
+
   async function enviarDecision(decision: "conforme" | "observada") {
     if (decision === "observada" && observaciones.trim().length < 5) {
       setError("Describe la observación encontrada antes de registrar el resultado.");
+      return;
+    }
+
+    if (decision === "conforme" && tieneObservacion) {
+      setError("No puedes marcar conforme si ya escribiste una observación o pediste cambio de plano.");
       return;
     }
 
@@ -91,7 +98,7 @@ export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedient
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex gap-3">
-        <Button onClick={() => enviarDecision("conforme")} disabled={cargando} className="flex-1">
+        <Button onClick={() => enviarDecision("conforme")} disabled={cargando || tieneObservacion} className="flex-1">
           Conforme
         </Button>
         <Button
@@ -103,6 +110,11 @@ export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedient
           {tipoInspeccion === "primera" ? "Observada (programar 2da visita)" : "Observada (rechazar)"}
         </Button>
       </div>
+      {tieneObservacion && (
+        <p className="text-xs text-gray-500">
+          No puedes marcar conforme con una observación escrita. Bórrala si el local sí está conforme.
+        </p>
+      )}
     </Card>
   );
 }

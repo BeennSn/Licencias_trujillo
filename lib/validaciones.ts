@@ -98,11 +98,16 @@ export const esquemaNuevoInspector = z.object({
   nombre: z.string().min(2, "Ingresa el nombre del inspector."),
 });
 
-export const esquemaDecisionInspeccion = z.object({
-  decision: z.enum(["conforme", "observada"]),
-  observaciones: z.string().optional(),
-  requiereCambioDocumento: z.boolean().optional().default(false),
-});
+export const esquemaDecisionInspeccion = z
+  .object({
+    decision: z.enum(["conforme", "observada"]),
+    observaciones: z.string().optional(),
+    requiereCambioDocumento: z.boolean().optional().default(false),
+  })
+  .refine((datos) => !(datos.decision === "conforme" && (datos.observaciones?.trim() || datos.requiereCambioDocumento)), {
+    message: "No se puede marcar conforme con una observación escrita o pidiendo cambio de plano.",
+    path: ["decision"],
+  });
 
 export const esquemaReporteInfraestructura = z.object({
   descripcion: z.string().min(10, "Describe con más detalle el cambio realizado en el local."),
