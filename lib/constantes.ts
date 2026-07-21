@@ -21,6 +21,11 @@ export const VIGENCIA_LICENCIA_ANIOS = 1;
 // lib/agenda.ts::turnoSegunPosicion): turno 1 al turno CUPO_INSPECCIONES_POR_DIA.
 export const CUPO_INSPECCIONES_POR_DIA = 4;
 
+// Fondo mínimo (en soles) que el cajero debe declarar al abrir su caja (ver
+// lib/db/schema.ts::cajas.montoApertura). No es un cobro ni un pago: es el
+// efectivo con el que arranca su sesión de caja, para el arqueo posterior.
+export const MONTO_MINIMO_APERTURA_CAJA = 500;
+
 // Documentos del expediente (ej. plano del local): solo PDF/imagen, y con
 // un tamaño máximo para no llenar el almacenamiento con archivos basura.
 export const TIPOS_ARCHIVO_DOCUMENTO_PERMITIDOS = [

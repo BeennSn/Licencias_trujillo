@@ -5,10 +5,12 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Input } from "@/components/ui/Input";
 import { ETIQUETAS_ESTADO_CAJA } from "@/lib/estadosCaja";
+import { MONTO_MINIMO_APERTURA_CAJA } from "@/lib/constantes";
 
 type Totales = { total: number; totalesPorMedio: Record<string, number>; cantidadPagos: number };
-type Caja = { id: string; estado: "abierta" | "cierre_solicitado" | "cerrada"; abiertaEn: string } | null;
+type Caja = { id: string; estado: "abierta" | "cierre_solicitado" | "cerrada"; abiertaEn: string; montoApertura: string } | null;
 
 export default function PaginaCajero() {
   const [caja, setCaja] = useState<Caja>(null);
@@ -16,6 +18,7 @@ export default function PaginaCajero() {
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [montoApertura, setMontoApertura] = useState(String(MONTO_MINIMO_APERTURA_CAJA));
 
   async function cargarEstado() {
     const respuesta = await fetch("/api/cajero/caja");
@@ -42,8 +45,18 @@ export default function PaginaCajero() {
 
   async function abrirCaja() {
     setError(null);
+
+    if (!Number.isFinite(Number(montoApertura)) || Number(montoApertura) < MONTO_MINIMO_APERTURA_CAJA) {
+      setError(`El monto de apertura debe ser de al menos S/ ${MONTO_MINIMO_APERTURA_CAJA.toFixed(2)}.`);
+      return;
+    }
+
     setProcesando(true);
-    const respuesta = await fetch("/api/cajero/caja", { method: "POST" });
+    const respuesta = await fetch("/api/cajero/caja", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ montoApertura: Number(montoApertura) }),
+    });
     const datos = await respuesta.json();
     setProcesando(false);
     if (!respuesta.ok) {
@@ -104,6 +117,14 @@ export default function PaginaCajero() {
           ) : (
             <>
               <p className="text-sm text-gray-600">No tienes una caja abierta en este momento.</p>
+              <Input
+                label={`Monto de apertura (mínimo S/ ${MONTO_MINIMO_APERTURA_CAJA.toFixed(2)})`}
+                type="number"
+                min={MONTO_MINIMO_APERTURA_CAJA}
+                step="0.01"
+                value={montoApertura}
+                onChange={(e) => setMontoApertura(e.target.value)}
+              />
               {error && <p className="text-sm text-red-600">{error}</p>}
               <Button onClick={abrirCaja} disabled={procesando} className="w-full">
                 {procesando ? "Abriendo..." : "Abrir caja"}
@@ -153,6 +174,7 @@ export default function PaginaCajero() {
 
       <Card className="space-y-3">
         <h2 className="font-semibold text-gray-800">Cierre de caja</h2>
+        <p className="text-sm text-gray-600">Monto de apertura: S/ {Number(caja.montoApertura).toFixed(2)}</p>
         {totales && (
           <div className="text-sm text-gray-600 space-y-1">
             <p>Total cobrado en esta sesión: S/ {totales.total.toFixed(2)}</p>

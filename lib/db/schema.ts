@@ -221,6 +221,9 @@ export const cajas = pgTable("cajas", {
     .notNull()
     .references(() => usuarios.id),
   estado: estadoCaja("estado").notNull().default("abierta"),
+  // Fondo con el que arranca la sesión (ver MONTO_MINIMO_APERTURA_CAJA en
+  // lib/constantes.ts) — no es un pago, solo el efectivo declarado al abrir.
+  montoApertura: numeric("monto_apertura", { precision: 10, scale: 2 }).notNull(),
   abiertaEn: timestamp("abierta_en").notNull().defaultNow(),
   cierreSolicitadoEn: timestamp("cierre_solicitado_en"),
   cierreAprobadoPorId: uuid("cierre_aprobado_por_id").references(() => usuarios.id),

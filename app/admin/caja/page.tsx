@@ -10,6 +10,7 @@ type Sesion = {
   caja: {
     id: string;
     estado: EstadoCaja;
+    montoApertura: string;
     abiertaEn: string;
     cierreSolicitadoEn: string | null;
     cerradaEn: string | null;
@@ -78,7 +79,7 @@ export default function PaginaAdminCaja() {
                 <Badge tono="amarillo">Cierre pendiente</Badge>
               </div>
               <p className="text-xs text-gray-500">
-                Abierta desde {new Date(caja.abiertaEn).toLocaleString("es-PE")}
+                Abierta desde {new Date(caja.abiertaEn).toLocaleString("es-PE")} · apertura S/ {Number(caja.montoApertura).toFixed(2)}
               </p>
               <p className="text-gray-700">
                 Total cobrado: S/ {totales.total.toFixed(2)} ({totales.cantidadPagos} pagos)
@@ -120,7 +121,9 @@ export default function PaginaAdminCaja() {
                 <span className="font-medium text-gray-900">{cajero.nombre ?? cajero.email}</span>
                 <Badge tono={tonoEstadoCaja(caja.estado)}>{ETIQUETAS_ESTADO_CAJA[caja.estado]}</Badge>
               </div>
-              <p className="text-xs text-gray-500">Abierta: {new Date(caja.abiertaEn).toLocaleString("es-PE")}</p>
+              <p className="text-xs text-gray-500">
+                Abierta: {new Date(caja.abiertaEn).toLocaleString("es-PE")} · apertura S/ {Number(caja.montoApertura).toFixed(2)}
+              </p>
               {caja.cerradaEn && (
                 <p className="text-xs text-gray-500">
                   Cerrada: {new Date(caja.cerradaEn).toLocaleString("es-PE")}
