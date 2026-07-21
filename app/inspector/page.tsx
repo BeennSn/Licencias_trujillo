@@ -24,7 +24,7 @@ export default async function PaginaInspector() {
     .innerJoin(expedientes, eq(inspecciones.expedienteId, expedientes.id))
     .innerJoin(negocios, eq(expedientes.negocioId, negocios.id))
     .where(and(eq(inspecciones.inspectorId, sesion!.user.id), eq(inspecciones.estado, "programada")))
-    .orderBy(asc(inspecciones.fechaProgramada), asc(inspecciones.horaProgramada));
+    .orderBy(asc(inspecciones.fechaProgramada), asc(inspecciones.turno));
 
   const deHoy = filas.filter((f) => f.inspeccion.fechaProgramada <= hoy);
 
@@ -33,7 +33,7 @@ export default async function PaginaInspector() {
       <AutoRefresh />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mis inspecciones de hoy</h1>
-        <p className="text-gray-500 text-sm">Visitas técnicas pendientes, ordenadas por hora.</p>
+        <p className="text-gray-500 text-sm">Visitas técnicas pendientes, ordenadas por turno.</p>
       </div>
 
       <Card>
@@ -45,7 +45,7 @@ export default async function PaginaInspector() {
               <li key={inspeccion.id} className="py-3 flex items-center justify-between">
                 <div>
                   <p className="font-medium text-gray-900">
-                    {inspeccion.horaProgramada ?? "Hora sin especificar"} · {negocio.razonSocial}
+                    {inspeccion.turno ? `Turno ${inspeccion.turno}` : "Turno sin asignar"} · {negocio.razonSocial}
                     {inspeccion.fechaProgramada < hoy && (
                       <span className="ml-2 text-xs font-semibold text-red-600">Atrasada</span>
                     )}

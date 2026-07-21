@@ -86,13 +86,13 @@ export async function GET(request: Request) {
 
   for (const inspeccion of inspeccionesDeHoy) {
     const [expediente] = await db.select().from(expedientes).where(eq(expedientes.id, inspeccion.expedienteId)).limit(1);
-    const horaTexto = inspeccion.horaProgramada ?? "";
+    const turno = inspeccion.turno ?? null;
 
     if (expediente?.emailContacto) {
       await enviarCorreoRecordatorioInspeccionHoy(
         expediente.emailContacto,
         expediente.numeroExpediente ?? "",
-        horaTexto,
+        turno,
         inspeccion.tipo
       );
     }
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
         negocio?.razonSocial ?? "",
         expediente.distrito ?? "",
         expediente.direccionLocal ?? "",
-        horaTexto,
+        turno,
         inspeccion.tipo
       );
     }

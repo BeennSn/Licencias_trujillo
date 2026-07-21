@@ -9,6 +9,7 @@ import {
   date,
   timestamp,
   numeric,
+  integer,
   pgEnum,
   jsonb,
 } from "drizzle-orm/pg-core";
@@ -153,9 +154,10 @@ export const inspecciones = pgTable("inspecciones", {
     .references(() => expedientes.id),
   tipo: tipoInspeccion("tipo").notNull(),
   fechaProgramada: date("fecha_programada").notNull(),
-  // Hora de la visita dentro del día (ver HORAS_INSPECCION en lib/constantes.ts).
-  // Nullable porque las inspecciones creadas antes de este campo no tienen hora.
-  horaProgramada: varchar("hora_programada", { length: 5 }),
+  // Turno del día (1 a CUPO_INSPECCIONES_POR_DIA, ver lib/constantes.ts) en
+  // vez de una hora pactada. Nullable porque las inspecciones creadas antes
+  // de este campo no tienen turno asignado.
+  turno: integer("turno"),
   inspectorId: uuid("inspector_id")
     .notNull()
     .references(() => usuarios.id),

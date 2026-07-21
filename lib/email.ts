@@ -35,25 +35,24 @@ export async function enviarCorreoRecuperacion(destinatario: string, enlace: str
   );
 }
 
-// horaTexto puede venir vacío (inspecciones antiguas sin hora asignada, ver
-// lib/db/schema.ts::inspecciones.horaProgramada) — en ese caso se omite del
-// correo en vez de mostrar "a las".
-function textoFechaHora(fechaIso: string, horaTexto: string): string {
-  return horaTexto ? `<strong>${fechaIso}</strong> a las <strong>${horaTexto}</strong>` : `<strong>${fechaIso}</strong>`;
+// turno puede venir null (inspecciones antiguas sin turno asignado, ver
+// lib/db/schema.ts::inspecciones.turno) — en ese caso se omite del correo.
+function textoFechaTurno(fechaIso: string, turno: number | null): string {
+  return turno ? `<strong>${fechaIso}</strong> (turno ${turno})` : `<strong>${fechaIso}</strong>`;
 }
 
 export async function enviarCorreoInspeccionProgramada(
   destinatario: string,
   numeroExpediente: string,
   fechaIso: string,
-  horaTexto: string,
+  turno: number | null,
   tipo: "primera" | "segunda"
 ) {
   const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
   await enviarCorreo(
     destinatario,
     `Inspección técnica programada - Expediente ${numeroExpediente}`,
-    `<p>Se programó la ${etiquetaTipo} inspección técnica de tu local para el ${textoFechaHora(fechaIso, horaTexto)}.</p>
+    `<p>Se programó la ${etiquetaTipo} inspección técnica de tu local para el ${textoFechaTurno(fechaIso, turno)}.</p>
      <p>Puedes consultar el detalle de tu expediente con tu RUC o N° de expediente en la sección de consulta del sistema.</p>`
   );
 }
@@ -61,7 +60,7 @@ export async function enviarCorreoInspeccionProgramada(
 // Igual que enviarCorreoInspeccionProgramada, pero dirigido al inspector
 // asignado (requisito: cada vez que se programa/reprograma una inspección,
 // tanto el negocio como el inspector deben recibir un correo con fecha,
-// hora y datos de la visita).
+// turno y datos de la visita).
 export async function enviarCorreoInspeccionProgramadaInspector(
   destinatario: string,
   numeroExpediente: string,
@@ -69,14 +68,14 @@ export async function enviarCorreoInspeccionProgramadaInspector(
   distrito: string,
   direccionLocal: string,
   fechaIso: string,
-  horaTexto: string,
+  turno: number | null,
   tipo: "primera" | "segunda"
 ) {
   const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
   await enviarCorreo(
     destinatario,
     `Inspección asignada - Expediente ${numeroExpediente}`,
-    `<p>Se te asignó la ${etiquetaTipo} inspección técnica de <strong>${razonSocial}</strong> para el ${textoFechaHora(fechaIso, horaTexto)}.</p>
+    `<p>Se te asignó la ${etiquetaTipo} inspección técnica de <strong>${razonSocial}</strong> para el ${textoFechaTurno(fechaIso, turno)}.</p>
      <p><strong>Dirección:</strong> ${direccionLocal}, ${distrito}</p>
      <p><strong>Expediente:</strong> ${numeroExpediente}</p>
      <p>Revisa el detalle en tu panel de inspecciones.</p>`
@@ -89,14 +88,14 @@ export async function enviarCorreoInspeccionProgramadaInspector(
 export async function enviarCorreoRecordatorioInspeccionHoy(
   destinatario: string,
   numeroExpediente: string,
-  horaTexto: string,
+  turno: number | null,
   tipo: "primera" | "segunda"
 ) {
   const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
   await enviarCorreo(
     destinatario,
     `Hoy tienes inspección técnica - Expediente ${numeroExpediente}`,
-    `<p>Hoy es la fecha de tu ${etiquetaTipo} inspección técnica${horaTexto ? ` (a las <strong>${horaTexto}</strong>)` : ""}.</p>
+    `<p>Hoy es la fecha de tu ${etiquetaTipo} inspección técnica${turno ? ` (turno <strong>${turno}</strong>)` : ""}.</p>
      <p>Un inspector municipal visitará tu local para verificar tu documentación.</p>`
   );
 }
@@ -109,14 +108,14 @@ export async function enviarCorreoRecordatorioInspeccionHoyInspector(
   razonSocial: string,
   distrito: string,
   direccionLocal: string,
-  horaTexto: string,
+  turno: number | null,
   tipo: "primera" | "segunda"
 ) {
   const etiquetaTipo = tipo === "primera" ? "primera" : "segunda";
   await enviarCorreo(
     destinatario,
     `Hoy tienes una inspección pendiente - Expediente ${numeroExpediente}`,
-    `<p>Hoy debes cumplir con la ${etiquetaTipo} inspección técnica de <strong>${razonSocial}</strong>${horaTexto ? ` (a las <strong>${horaTexto}</strong>)` : ""}.</p>
+    `<p>Hoy debes cumplir con la ${etiquetaTipo} inspección técnica de <strong>${razonSocial}</strong>${turno ? ` (turno <strong>${turno}</strong>)` : ""}.</p>
      <p><strong>Dirección:</strong> ${direccionLocal}, ${distrito}</p>
      <p><strong>Expediente:</strong> ${numeroExpediente}</p>
      <p>Revisa el detalle en tu panel de inspecciones.</p>`

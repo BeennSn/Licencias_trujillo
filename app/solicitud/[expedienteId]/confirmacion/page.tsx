@@ -51,7 +51,7 @@ export default async function PasoConfirmacion({
               <p>
                 <span className="font-medium">Fecha de tu primera inspección técnica:</span>{" "}
                 {inspeccion.fechaProgramada}
-                {inspeccion.horaProgramada ? ` a las ${inspeccion.horaProgramada}` : ""}
+                {inspeccion.turno ? ` (Turno ${inspeccion.turno})` : ""}
               </p>
             )}
           </div>

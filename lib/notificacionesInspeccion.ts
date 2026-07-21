@@ -16,14 +16,14 @@ export async function notificarInspeccionProgramada(params: {
   notificarInspector?: boolean;
 }) {
   const { inspeccion, expediente, notificarInspector = true } = params;
-  const horaTexto = inspeccion.horaProgramada ?? "";
+  const turno = inspeccion.turno ?? null;
 
   if (expediente.emailContacto) {
     await enviarCorreoInspeccionProgramada(
       expediente.emailContacto,
       expediente.numeroExpediente ?? "",
       inspeccion.fechaProgramada,
-      horaTexto,
+      turno,
       inspeccion.tipo
     );
   }
@@ -42,7 +42,7 @@ export async function notificarInspeccionProgramada(params: {
     expediente.distrito ?? "",
     expediente.direccionLocal ?? "",
     inspeccion.fechaProgramada,
-    horaTexto,
+    turno,
     inspeccion.tipo
   );
 }
