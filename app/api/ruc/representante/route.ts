@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { consultarRepresentanteLegal } from "@/lib/apiPeruDev";
+import { consultarRepresentanteLegal } from "@/lib/consultasPeru";
 
 // Autocompletado del paso de domicilio: busca el representante legal
-// registrado ante SUNAT para el RUC (ver lib/apiPeruDev.ts). Si no se
+// registrado ante SUNAT para el RUC (ver lib/consultasPeru.ts). Si no se
 // encuentra nada (RUC sin representante registrado, servicio no
 // configurado/caído), devuelve representante: null y el negocio simplemente
 // lo completa a mano — nunca bloquea el wizard por esto.
