@@ -80,6 +80,21 @@ export default function PasoDomicilio() {
         setSugerencias(lista);
         if (lista.length === 0) setSinDireccionesSunat(true);
         setCargandoInicial(false);
+
+        // Autocompletar representante legal (ver lib/apiPeruDev.ts): nunca
+        // bloquea nada si no se encuentra, el negocio lo completa a mano.
+        const ruc: string | undefined = datos.negocio?.ruc;
+        if (ruc) {
+          fetch(`/api/ruc/representante?ruc=${ruc}`)
+            .then((r) => r.json())
+            .then((datosRepresentante) => {
+              if (datosRepresentante.representante) {
+                setRepresentanteLegalNombre(datosRepresentante.representante.nombre);
+                setRepresentanteLegalDni(datosRepresentante.representante.dni);
+              }
+            })
+            .catch(() => {});
+        }
       });
   }, [expedienteId]);
 
