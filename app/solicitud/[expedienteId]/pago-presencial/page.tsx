@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { StepIndicator } from "@/components/wizard/StepIndicator";
-import { MONTO_TRAMITE_SOLES, MONTO_TRAMITE_COBRO_REAL_SOLES } from "@/lib/constantes";
+import { MONTO_TRAMITE_SOLES, QR_YAPE_PLIN_IMAGEN } from "@/lib/constantes";
 import { pasoPorDefecto, puedeVerPago } from "@/lib/wizardPasos";
 
 type MedioPagoPresencial = "efectivo" | "yape" | "mixto";
@@ -154,13 +155,19 @@ export default function PasoPagoPresencial() {
           </Select>
 
           {(medioPago === "yape" || medioPago === "mixto") && (
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-1 text-sm text-gray-600">
-              <p>
-                Genera el cobro por <strong>S/ {MONTO_TRAMITE_COBRO_REAL_SOLES.toFixed(2)}</strong> (modo prueba) en
-                la app de Izipay y muestra el QR al cliente para que pague con Yape o Plin.
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-3 text-center">
+              <Image
+                src={QR_YAPE_PLIN_IMAGEN}
+                alt="QR para pagar con Yape/Plin"
+                width={220}
+                height={220}
+                className="mx-auto rounded-md"
+              />
+              <p className="text-sm text-gray-600">
+                Muestra este QR al cliente para que escanee y pague con Yape o Plin, indicándole el monto a pagar.
               </p>
               <p className="text-xs text-gray-400">
-                Confirma el pago en tu app antes de registrar el cobro acá abajo.
+                Verifica en tu app que el pago llegó antes de confirmar el cobro acá abajo.
               </p>
             </div>
           )}

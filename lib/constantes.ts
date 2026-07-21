@@ -12,6 +12,14 @@ export const MONTO_TRAMITE_SOLES = 180;
 // cobrarDerechoDeTramite().
 export const MONTO_TRAMITE_COBRO_REAL_SOLES = 1.8;
 
+// QR estático personal de Yape/Plin (public/qr-yape-plin.png) que el cajero
+// muestra al cliente en un pago presencial por QR. No tiene el monto fijo
+// codificado (eso solo existe en cuentas empresariales con API, ver la
+// investigación en la sesión): el cliente escanea y escribe el monto a
+// mano, por eso el cajero debe verificar el cobro en su propia app antes
+// de confirmar el pago acá.
+export const QR_YAPE_PLIN_IMAGEN = "/qr-yape-plin.png";
+
 export const DIAS_HABILES_SEGUNDA_INSPECCION = 30;
 
 export const VIGENCIA_LICENCIA_ANIOS = 1;
