@@ -59,8 +59,12 @@ export const estadoLicencia = pgEnum("estado_licencia", [
   "CLAUSURADA",
 ]);
 
-// Cuentas de acceso al sistema. El negocio recién obtiene una fila aquí
-// después de pagar (paso E del wizard); inspectores y admin se crean por seed/admin.
+// Debe reflejar exactamente los valores de EstadoCaja en lib/estadosCaja.ts
+export const estadoCaja = pgEnum("estado_caja", ["abierta", "cierre_solicitado", "cerrada"]);
+
+// Cuentas de acceso al sistema. El negocio ya no tiene cuenta (consulta su
+// trámite/licencia por RUC, ver app/consulta); inspector/admin/cajero se
+// crean por seed o desde el panel de administrador.
 export const usuarios = pgTable("usuarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).notNull().unique(),
@@ -163,6 +167,11 @@ export const inspecciones = pgTable("inspecciones", {
     .references(() => usuarios.id),
   estado: estadoInspeccion("estado").notNull().default("programada"),
   observaciones: text("observaciones"),
+  // Marcado por el inspector solo cuando observa la primera visita Y la
+  // observación exige cambiar el plano del local (no cualquier observación).
+  // Habilita el panel del cajero para reemplazar el documento (ver
+  // app/cajero/documentos) — si es false, el cajero no puede tocar el plano.
+  requiereCambioDocumento: boolean("requiere_cambio_documento").notNull().default(false),
   fechaRealizada: date("fecha_realizada"),
   // Evita reenviar el recordatorio "hoy tienes inspección" más de una vez
   // si el cron corre más de una vez el mismo día (ver app/api/cron).
@@ -200,6 +209,24 @@ export const reportesInfraestructura = pgTable("reportes_infraestructura", {
   descripcion: text("descripcion").notNull(),
   fechaReporte: timestamp("fecha_reporte").notNull().defaultNow(),
   revisado: boolean("revisado").notNull().default(false),
+});
+
+// Sesión de caja de un cajero: debe abrir una al iniciar y no puede cerrarla
+// sin que un admin apruebe la solicitud de cierre (una fila por ciclo
+// completo apertura -> cierre, igual que "inspecciones" es una fila por
+// visita). Los totales cobrados se calculan al vuelo sumando "pagos" con
+// registradoPorId = cajeroId y createdAt entre abiertaEn y cerradaEn, no se
+// guardan acá para no tener dos fuentes de verdad.
+export const cajas = pgTable("cajas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  cajeroId: uuid("cajero_id")
+    .notNull()
+    .references(() => usuarios.id),
+  estado: estadoCaja("estado").notNull().default("abierta"),
+  abiertaEn: timestamp("abierta_en").notNull().defaultNow(),
+  cierreSolicitadoEn: timestamp("cierre_solicitado_en"),
+  cierreAprobadoPorId: uuid("cierre_aprobado_por_id").references(() => usuarios.id),
+  cerradaEn: timestamp("cerrada_en"),
 });
 
 // Tokens de un solo uso para recuperar contraseña (expiran en 1 hora).

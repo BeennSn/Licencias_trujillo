@@ -3,39 +3,30 @@ import { desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { negocios, licencias, expedientes } from "@/lib/db/schema";
-import { ejecutarRenovacion } from "@/lib/renovacion";
+import { iniciarExpedienteRenovacion } from "@/lib/renovacion";
+import { exigirCajaAbierta } from "@/lib/caja";
+import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 
-const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape"] as const;
-type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
-
-// Renovación presencial: el cajero busca el negocio por RUC y cobra en
-// ventanilla (efectivo, tarjeta o Yape/Plin con QR de monto fijo). Misma
-// regla de negocio y misma emisión de licencia que la renovación web (ver
-// lib/renovacion.ts): automática con solo el pago, sin inspección, siempre
-// que sea el mismo local — por eso no se pide "mismo local" acá tampoco, ya
-// que en caja el negocio se presenta físicamente a renovar su local existente.
+// Primer paso de la renovación presencial: busca al negocio por RUC, valida
+// que tenga una licencia elegible y crea el expediente de renovación
+// (PAGO_PENDIENTE), sin cobrar todavía. Separado del cobro (ver .../confirmar)
+// para que el cajero pueda, entre medio, reemplazar el plano si el negocio
+// cambió algo en el local (ver .../[expedienteId]/documento).
 export async function POST(request: Request) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "cajero") {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
 
+  const caja = await exigirCajaAbierta(sesion.user.id);
+  if (!caja) {
+    return NextResponse.json({ error: "Debes abrir tu caja antes de registrar un trámite." }, { status: 409 });
+  }
+
   const cuerpo = await request.json();
   const ruc = typeof cuerpo.ruc === "string" ? cuerpo.ruc.trim() : "";
   if (!/^\d{11}$/.test(ruc)) {
     return NextResponse.json({ error: "El RUC debe tener 11 dígitos." }, { status: 400 });
-  }
-
-  const medioPago: MedioPagoPresencial = MEDIOS_PAGO_PRESENCIAL.includes(cuerpo.medioPago)
-    ? cuerpo.medioPago
-    : "efectivo";
-  const numeroOperacion: string | undefined =
-    typeof cuerpo.numeroOperacion === "string" && cuerpo.numeroOperacion.trim()
-      ? cuerpo.numeroOperacion.trim()
-      : undefined;
-
-  if (medioPago !== "efectivo" && !numeroOperacion) {
-    return NextResponse.json({ error: "Falta el número de operación del pago." }, { status: 400 });
   }
 
   const [negocio] = await db.select().from(negocios).where(eq(negocios.ruc, ruc)).limit(1);
@@ -68,26 +59,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const resultado = await ejecutarRenovacion({
-    negocioId: negocio.id,
-    medioPago,
-    canal: "presencial",
-    registradoPorId: sesion.user.id,
-    emailNotificacion,
-    resolverPago: async () => ({
-      aprobado: true,
-      referencia: numeroOperacion ?? `caja_${sesion.user.id}_${Date.now()}`,
-    }),
-  });
-
-  if (!resultado.ok) {
-    return NextResponse.json({ error: resultado.error, pagoId: resultado.pagoId }, { status: resultado.status });
+  const inicio = await iniciarExpedienteRenovacion(negocio.id);
+  if (!inicio.ok) {
+    return NextResponse.json({ error: inicio.error }, { status: inicio.status });
   }
 
   return NextResponse.json({
     ok: true,
+    expedienteId: inicio.expedienteId,
     razonSocial: negocio.razonSocial,
-    pdfUrl: resultado.pdfUrl,
-    fechaVencimiento: resultado.fechaVencimiento,
+    monto: MONTO_TRAMITE_SOLES,
   });
 }

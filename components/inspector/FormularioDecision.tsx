@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedienteId: string; tipoInspeccion: "primera" | "segunda" }) {
   const router = useRouter();
   const [observaciones, setObservaciones] = useState("");
+  const [requiereCambioDocumento, setRequiereCambioDocumento] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -24,7 +25,14 @@ export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedient
     const respuesta = await fetch(`/api/inspector/expediente/${expedienteId}/decision`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, observaciones }),
+      body: JSON.stringify({
+        decision,
+        observaciones,
+        // Solo tiene sentido en la primera visita: es lo que habilita al
+        // cajero a reemplazar el plano antes de la segunda (ver
+        // app/cajero/documentos). Si no se marca, el cajero no puede tocarlo.
+        requiereCambioDocumento: tipoInspeccion === "primera" ? requiereCambioDocumento : false,
+      }),
     });
 
     const datos = await respuesta.json();
@@ -68,6 +76,17 @@ export function FormularioDecision({ expedienteId, tipoInspeccion }: { expedient
           onChange={(e) => setObservaciones(e.target.value)}
         />
       </label>
+
+      {tipoInspeccion === "primera" && (
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={requiereCambioDocumento}
+            onChange={(e) => setRequiereCambioDocumento(e.target.checked)}
+          />
+          La observación requiere que el negocio cambie el plano del local
+        </label>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

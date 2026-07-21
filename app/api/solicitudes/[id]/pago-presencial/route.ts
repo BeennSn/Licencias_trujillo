@@ -8,19 +8,25 @@ import { programarPrimeraInspeccion } from "@/lib/agenda";
 import { notificarInspeccionProgramada } from "@/lib/notificacionesInspeccion";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
+import { exigirCajaAbierta } from "@/lib/caja";
 
-const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape"] as const;
+const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape", "mixto"] as const;
 type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
 
 // Variante presencial del paso D del wizard (ver también .../pago): un
-// cajero cobra el derecho de trámite en ventanilla (efectivo, tarjeta o
-// Yape/Plin con QR de monto fijo) y confirma el pago directo, sin pasarela.
-// El resto es idéntico al pago web: agenda la primera inspección lo antes
-// posible.
+// cajero cobra el derecho de trámite en ventanilla (efectivo, tarjeta, Yape/
+// Plin con QR de monto fijo, o una combinación efectivo+Yape) y confirma el
+// pago directo, sin pasarela. El resto es idéntico al pago web: agenda la
+// primera inspección lo antes posible.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "cajero") {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+  }
+
+  const caja = await exigirCajaAbierta(sesion.user.id);
+  if (!caja) {
+    return NextResponse.json({ error: "Debes abrir tu caja antes de registrar un cobro." }, { status: 409 });
   }
 
   const cuerpo = await request.json().catch(() => ({}));
@@ -32,8 +38,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? cuerpo.numeroOperacion.trim()
       : undefined;
 
-  if (medioPago !== "efectivo" && !numeroOperacion) {
+  if (medioPago === "yape" && !numeroOperacion) {
     return NextResponse.json({ error: "Falta el número de operación del pago." }, { status: 400 });
+  }
+
+  let montoEfectivo = 0;
+  let montoYape = 0;
+  if (medioPago === "mixto") {
+    montoEfectivo = Number(cuerpo.montoEfectivo);
+    montoYape = Number(cuerpo.montoYape);
+    if (!Number.isFinite(montoEfectivo) || !Number.isFinite(montoYape) || montoEfectivo < 0 || montoYape < 0) {
+      return NextResponse.json({ error: "Ingresa montos válidos para efectivo y Yape." }, { status: 400 });
+    }
+    if (Math.round((montoEfectivo + montoYape) * 100) !== Math.round(MONTO_TRAMITE_SOLES * 100)) {
+      return NextResponse.json(
+        { error: `La suma de efectivo y Yape debe ser exactamente S/ ${MONTO_TRAMITE_SOLES.toFixed(2)}.` },
+        { status: 400 }
+      );
+    }
+    if (montoYape > 0 && !numeroOperacion) {
+      return NextResponse.json({ error: "Falta el número de operación del pago por Yape." }, { status: 400 });
+    }
   }
 
   const { id } = await params;
@@ -54,18 +79,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await db.update(expedientes).set({ estado: "PAGO_PENDIENTE" }).where(eq(expedientes.id, id));
   }
 
-  const [pago] = await db
-    .insert(pagos)
-    .values({
+  const referencia = numeroOperacion ?? `caja_${sesion.user.id}_${Date.now()}`;
+
+  if (medioPago === "mixto") {
+    const filas = [];
+    if (montoEfectivo > 0) {
+      filas.push({
+        expedienteId: id,
+        monto: montoEfectivo.toFixed(2),
+        medioPago: "efectivo" as const,
+        estado: "aprobado" as const,
+        referenciaPago: `${referencia}_efectivo`,
+        canal: "presencial" as const,
+        registradoPorId: sesion.user.id,
+      });
+    }
+    if (montoYape > 0) {
+      filas.push({
+        expedienteId: id,
+        monto: montoYape.toFixed(2),
+        medioPago: "yape" as const,
+        estado: "aprobado" as const,
+        referenciaPago: `${referencia}_yape`,
+        canal: "presencial" as const,
+        registradoPorId: sesion.user.id,
+      });
+    }
+    await db.insert(pagos).values(filas);
+  } else {
+    await db.insert(pagos).values({
       expedienteId: id,
       monto: MONTO_TRAMITE_SOLES.toFixed(2),
       medioPago,
       estado: "aprobado",
-      referenciaPago: numeroOperacion ?? `caja_${sesion.user.id}_${Date.now()}`,
+      referenciaPago: referencia,
       canal: "presencial",
       registradoPorId: sesion.user.id,
-    })
-    .returning();
+    });
+  }
 
   if (puedeTransicionar("PAGO_PENDIENTE", "PAGO_APROBADO")) {
     await db.update(expedientes).set({ estado: "PAGO_APROBADO" }).where(eq(expedientes.id, id));
@@ -82,7 +133,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     ok: true,
-    pagoId: pago.id,
     fechaInspeccion: inspeccion.fechaProgramada,
   });
 }

@@ -84,15 +84,19 @@ export type ResultadoCompletarRenovacion =
   | { ok: true; pdfUrl: string | null; fechaVencimiento: string }
   | { ok: false; error: string };
 
+export type PagoRealizado = { medioPago: MedioPago; monto: number; referenciaPago: string };
+
 export async function completarRenovacionAprobada(params: {
   expedienteId: string;
-  medioPago: MedioPago;
-  referenciaPago: string;
+  // Normalmente un solo elemento (un medio de pago), pero el cajero puede
+  // cobrar la renovación mitad efectivo, mitad Yape (pago mixto) — en ese
+  // caso vienen dos, y cada uno se registra como su propia fila en "pagos".
+  pagosRealizados: PagoRealizado[];
   canal: "web" | "presencial";
   registradoPorId?: string;
   emailNotificacion: string;
 }): Promise<ResultadoCompletarRenovacion> {
-  const { expedienteId, medioPago, referenciaPago, canal, registradoPorId, emailNotificacion } = params;
+  const { expedienteId, pagosRealizados, canal, registradoPorId, emailNotificacion } = params;
 
   // Idempotente: si ya se emitió una licencia para este expediente de
   // renovación, no se vuelve a cobrar/emitir (redirección + webhook llegando
@@ -112,15 +116,17 @@ export async function completarRenovacionAprobada(params: {
     return { ok: false, error: "Negocio no encontrado." };
   }
 
-  await db.insert(pagos).values({
-    expedienteId,
-    monto: MONTO_TRAMITE_SOLES.toFixed(2),
-    medioPago,
-    estado: "aprobado",
-    referenciaPago,
-    canal,
-    registradoPorId,
-  });
+  await db.insert(pagos).values(
+    pagosRealizados.map((pago) => ({
+      expedienteId,
+      monto: pago.monto.toFixed(2),
+      medioPago: pago.medioPago,
+      estado: "aprobado" as const,
+      referenciaPago: pago.referenciaPago,
+      canal,
+      registradoPorId,
+    }))
+  );
 
   const hoy = aFechaIso(new Date());
   const fechaVencimiento = sumarAnios(hoy, VIGENCIA_LICENCIA_ANIOS);
@@ -227,8 +233,7 @@ export async function ejecutarRenovacion(params: {
 
   const completado = await completarRenovacionAprobada({
     expedienteId: inicio.expedienteId,
-    medioPago,
-    referenciaPago: resultadoPago.referencia,
+    pagosRealizados: [{ medioPago, monto: MONTO_TRAMITE_SOLES, referenciaPago: resultadoPago.referencia }],
     canal,
     registradoPorId,
     emailNotificacion,

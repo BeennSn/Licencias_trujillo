@@ -60,12 +60,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
   }
 
-  const { decision, observaciones } = analisis.data;
+  const { decision, observaciones, requiereCambioDocumento } = analisis.data;
   const hoy = aFechaIso(new Date());
 
   await db
     .update(inspecciones)
-    .set({ estado: decision === "conforme" ? "conforme" : "observada", observaciones, fechaRealizada: hoy })
+    .set({
+      estado: decision === "conforme" ? "conforme" : "observada",
+      observaciones,
+      // Solo se marca en la primera visita (es la única que puede llevar a
+      // una segunda, ver más abajo) — igual queda forzado a false en el
+      // esquema del formulario si tipoInspeccion !== "primera".
+      requiereCambioDocumento: inspeccion.tipo === "primera" ? requiereCambioDocumento : false,
+      fechaRealizada: hoy,
+    })
     .where(eq(inspecciones.id, inspeccion.id));
 
   const [negocio] = await db.select().from(negocios).where(eq(negocios.id, expediente.negocioId)).limit(1);

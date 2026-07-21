@@ -12,6 +12,7 @@ export default async function LayoutAdmin({ children }: { children: React.ReactN
         <Link href="/admin" className="text-blue-700 hover:underline">Expedientes</Link>
         <Link href="/admin/inspectores" className="text-blue-700 hover:underline">Inspectores</Link>
         <Link href="/admin/cajeros" className="text-blue-700 hover:underline">Cajeros</Link>
+        <Link href="/admin/caja" className="text-blue-700 hover:underline">Caja</Link>
       </div>
       <div className="flex-1 bg-gray-50">{children}</div>
     </div>

@@ -103,6 +103,7 @@ export const esquemaNuevoInspector = z.object({
 export const esquemaDecisionInspeccion = z.object({
   decision: z.enum(["conforme", "observada"]),
   observaciones: z.string().optional(),
+  requiereCambioDocumento: z.boolean().optional().default(false),
 });
 
 export const esquemaReporteInfraestructura = z.object({

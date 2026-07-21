@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { expedientes } from "@/lib/db/schema";
 import { completarRenovacionAprobada } from "@/lib/renovacion";
 import { inferirMedioPagoDesdeMP } from "@/lib/pagos/mercadopago";
+import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 
 // Cuando el negocio vuelve de la plataforma de Mercado Pago (Checkout Pro,
 // ver .../renovar), el frontend llama acá con el payment_id que viene en la
@@ -62,8 +63,9 @@ export async function POST(request: Request) {
 
   const completado = await completarRenovacionAprobada({
     expedienteId,
-    medioPago: inferirMedioPagoDesdeMP(datosPago),
-    referenciaPago: String(datosPago.id),
+    pagosRealizados: [
+      { medioPago: inferirMedioPagoDesdeMP(datosPago), monto: MONTO_TRAMITE_SOLES, referenciaPago: String(datosPago.id) },
+    ],
     canal: "web",
     emailNotificacion: sesion.user.email ?? "",
   });
