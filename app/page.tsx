@@ -34,7 +34,7 @@ export default function PaginaInicio() {
             href="/login"
             className="border border-gray-300 hover:border-blue-400 hover:bg-blue-50 rounded-lg px-6 py-4 text-gray-800 font-medium transition-colors"
           >
-            Ingresar como inspector / administrador
+            Ingresar como inspector / administrador / cajero
           </Link>
         </div>
       </div>
