@@ -10,14 +10,14 @@ import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 import { aFechaIso } from "@/lib/diasHabilesPeru";
 import { exigirCajaAbierta } from "@/lib/caja";
 
-const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape", "mixto"] as const;
+const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "yape", "mixto"] as const;
 type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
 
 // Variante presencial del paso D del wizard (ver también .../pago): un
-// cajero cobra el derecho de trámite en ventanilla (efectivo, tarjeta, Yape/
-// Plin con QR de monto fijo, o una combinación efectivo+Yape) y confirma el
-// pago directo, sin pasarela. El resto es idéntico al pago web: agenda la
-// primera inspección lo antes posible.
+// cajero cobra el derecho de trámite en ventanilla (efectivo, Yape/Plin con
+// QR de monto fijo que el cliente escanea y paga a mano, o una combinación
+// efectivo+Yape) y confirma el pago directo, sin pasarela. El resto es
+// idéntico al pago web: agenda la primera inspección lo antes posible.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "cajero") {

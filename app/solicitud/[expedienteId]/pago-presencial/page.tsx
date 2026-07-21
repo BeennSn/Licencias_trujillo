@@ -12,7 +12,7 @@ import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { MONTO_TRAMITE_SOLES, MONTO_TRAMITE_COBRO_REAL_SOLES } from "@/lib/constantes";
 import { pasoPorDefecto, puedeVerPago } from "@/lib/wizardPasos";
 
-type MedioPagoPresencial = "efectivo" | "tarjeta" | "yape" | "mixto";
+type MedioPagoPresencial = "efectivo" | "yape" | "mixto";
 
 type ExpedienteResumen = {
   numeroExpediente: string;
@@ -149,7 +149,6 @@ export default function PasoPagoPresencial() {
             onChange={(e) => setMedioPago(e.target.value as MedioPagoPresencial)}
           >
             <option value="efectivo">Efectivo</option>
-            <option value="tarjeta">Tarjeta (POS)</option>
             <option value="yape">Yape / Plin (QR)</option>
             <option value="mixto">Mixto (efectivo + Yape)</option>
           </Select>
@@ -196,15 +195,6 @@ export default function PasoPagoPresencial() {
             <Input
               label="Número de operación (Yape)"
               placeholder="Ej. 000123456"
-              value={numeroOperacion}
-              onChange={(e) => setNumeroOperacion(e.target.value)}
-            />
-          )}
-
-          {medioPago === "tarjeta" && (
-            <Input
-              label="Número de operación"
-              placeholder="Ej. últimos 4 dígitos de la tarjeta"
               value={numeroOperacion}
               onChange={(e) => setNumeroOperacion(e.target.value)}
             />

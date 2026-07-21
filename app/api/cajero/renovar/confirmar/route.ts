@@ -7,13 +7,12 @@ import { completarRenovacionAprobada, type PagoRealizado } from "@/lib/renovacio
 import { exigirCajaAbierta } from "@/lib/caja";
 import { MONTO_TRAMITE_SOLES } from "@/lib/constantes";
 
-const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "tarjeta", "yape", "mixto"] as const;
+const MEDIOS_PAGO_PRESENCIAL = ["efectivo", "yape", "mixto"] as const;
 type MedioPagoPresencial = (typeof MEDIOS_PAGO_PRESENCIAL)[number];
 
-// Segundo paso de la renovación presencial: cobra (efectivo, tarjeta, Yape o
-// mixto efectivo+Yape) y emite la licencia. Se llama después de
-// .../iniciar (y, opcionalmente, de reemplazar el plano en
-// .../[expedienteId]/documento).
+// Segundo paso de la renovación presencial: cobra (efectivo, Yape o mixto
+// efectivo+Yape) y emite la licencia. Se llama después de .../iniciar (y,
+// opcionalmente, de reemplazar el plano en .../[expedienteId]/documento).
 export async function POST(request: Request) {
   const sesion = await auth();
   if (!sesion?.user || sesion.user.rol !== "cajero") {
