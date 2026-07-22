@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
@@ -23,6 +24,7 @@ function generarTokenDePrueba(medioPago: string, simularRechazo: boolean) {
 export default function PasoPago() {
   const { expedienteId } = useParams<{ expedienteId: string }>();
   const router = useRouter();
+  const { data: sesion, status: estadoSesion } = useSession();
 
   const [medioPago, setMedioPago] = useState<"tarjeta" | "yape" | "pagoefectivo">("tarjeta");
   const [email, setEmail] = useState("");
@@ -32,6 +34,16 @@ export default function PasoPago() {
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   useEffect(() => {
+    if (estadoSesion === "loading") return;
+
+    // Un cajero cobra en ventanilla (efectivo/Yape/mixto), nunca por
+    // Mercado Pago: si llega acá (sesión cargó después del primer render,
+    // link directo, etc.) se le manda a su propio paso de pago.
+    if (sesion?.user?.rol === "cajero") {
+      router.replace(`/solicitud/${expedienteId}/pago-presencial`);
+      return;
+    }
+
     fetch(`/api/solicitudes/${expedienteId}`)
       .then((r) => r.json())
       .then((datos) => {
@@ -43,7 +55,7 @@ export default function PasoPago() {
         }
         setVerificandoAcceso(false);
       });
-  }, [expedienteId, router]);
+  }, [expedienteId, router, estadoSesion, sesion]);
 
   // Con Mercado Pago configurado: crea la preferencia y redirige a su
   // plataforma (Checkout Pro), donde el negocio elige tarjeta/Yape/
