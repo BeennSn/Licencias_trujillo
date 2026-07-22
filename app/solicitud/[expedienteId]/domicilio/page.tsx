@@ -124,7 +124,9 @@ export default function PasoDomicilio() {
     setNombreComercial(domicilioBloqueado.nombreComercial);
     setRepresentanteLegalNombre(domicilioBloqueado.representanteLegalNombre);
     setRepresentanteLegalDni(domicilioBloqueado.representanteLegalDni);
-    setRepresentanteAutocompletado(false);
+    // El representante legal no se vuelve a habilitar para editar: es un
+    // dato oficial (de SUNAT o ya guardado), no algo que se corrija a mano.
+    setRepresentanteAutocompletado(true);
     setEmailContacto(domicilioBloqueado.emailContacto);
     setTelefonoContacto(domicilioBloqueado.telefonoContacto);
 
