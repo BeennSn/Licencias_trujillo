@@ -1,14 +1,24 @@
-// Validación de RUC contra la API de Decolecta (https://decolecta.com), que
-// consulta datos reales de SUNAT: si el RUC existe, su razón social, su
+// Validación de RUC contra la API de ConsultasPeru (https://consultasperu.com),
+// que consulta datos reales de SUNAT: si el RUC existe, su razón social, su
 // domicilio fiscal (distrito/provincia/departamento) y locales anexos, y si
 // está ACTIVO y HABIDO. No es el convenio empresarial oficial de SUNAT (eso
 // requiere trámite formal con la municipalidad), pero sirve para verificar
 // que el negocio sea real.
 //
-// Endpoint: GET {SUNAT_API_URL}?numero={ruc}  con  Authorization: Bearer {SUNAT_API_TOKEN}
-// Campos que usamos de la respuesta: razon_social, estado, condicion,
-// direccion, distrito, provincia, departamento, locales_anexos (cada uno
-// con su propia direccion/distrito/provincia/departamento).
+// Antes usábamos Decolecta (SUNAT_API_URL/SUNAT_API_TOKEN); se cambió a
+// ConsultasPeru porque el plan de Decolecta se agotó (401 "Limit Exceeded").
+// CONSULTASPERU_TOKEN ya se usaba en lib/consultasPeru.ts para el
+// representante legal; aquí se reutiliza el mismo token para los datos
+// generales del RUC y los locales anexos.
+//
+// Endpoints (POST, body JSON con {token, ...}):
+// - https://api.consultasperu.com/api/v1/query
+//   body: { token, type_document: "ruc", document_number: ruc }
+//   data: { name, status, domicile_conditions, province, department,
+//           district, address } — o data: [] (array vacío) si el RUC no existe.
+// - https://api.consultasperu.com/api/v1/query/ruc-anexos
+//   body: { token, ruc }
+//   data: [{ direccion, distrito, provincia, departamento, ... }]
 //
 // Antes de llamar al servicio, se corren validaciones locales (formato,
 // tipo de RUC, dígito verificador — ver lib/validacionRuc.ts). Si esas
@@ -18,6 +28,9 @@
 // bloqueante: ahí sí se permite continuar con carga manual de razón
 // social, dejando una marca para revisión.
 import { validarRucLocalmente } from "./validacionRuc";
+
+const CONSULTASPERU_URL_RUC = "https://api.consultasperu.com/api/v1/query";
+const CONSULTASPERU_URL_ANEXOS = "https://api.consultasperu.com/api/v1/query/ruc-anexos";
 
 const DEPARTAMENTO_TRUJILLO = "LA LIBERTAD";
 const PROVINCIA_TRUJILLO = "TRUJILLO";
@@ -99,48 +112,101 @@ export type ResultadoConsultaRuc =
       bloqueante: boolean;
     };
 
+type DatosRucConsultasPeru = {
+  name?: string;
+  status?: string;
+  domicile_conditions?: string;
+  province?: string;
+  department?: string;
+  district?: string;
+  address?: string;
+};
+
+type AnexoConsultasPeru = { direccion?: string; distrito?: string; provincia?: string; departamento?: string };
+
+// Los locales anexos son un "nice to have" (autocompletado de direcciones);
+// si esta llamada falla no debe tumbar la consulta principal del RUC.
+async function obtenerAnexosTrujillo(ruc: string, token: string): Promise<LocalAnexoSunat[]> {
+  try {
+    const respuesta = await fetch(CONSULTASPERU_URL_ANEXOS, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, ruc }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!respuesta.ok) return [];
+
+    const datos: { success: boolean; data?: AnexoConsultasPeru[] } = await respuesta.json();
+    if (!datos.success || !Array.isArray(datos.data)) return [];
+
+    return datos.data.map((anexo) => ({
+      direccion: anexo.direccion,
+      distrito: anexo.distrito,
+      provincia: anexo.provincia,
+      departamento: anexo.departamento,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
   const validacionLocal = validarRucLocalmente(ruc);
   if (!validacionLocal.valido) {
     return { disponible: false, motivo: validacionLocal.motivo, bloqueante: true };
   }
 
-  const url = process.env.SUNAT_API_URL;
-  const token = process.env.SUNAT_API_TOKEN;
+  const token = process.env.CONSULTASPERU_TOKEN;
 
-  if (!url || !token) {
+  if (!token) {
     return { disponible: false, motivo: "Servicio de validación de RUC no configurado.", bloqueante: false };
   }
 
   try {
-    const respuesta = await fetch(`${url}?numero=${ruc}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const respuesta = await fetch(CONSULTASPERU_URL_RUC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, type_document: "ruc", document_number: ruc }),
       signal: AbortSignal.timeout(8000),
     });
 
-    const datos = await respuesta.json();
+    const cuerpo: { success: boolean; message?: string; data?: DatosRucConsultasPeru | [] } =
+      await respuesta.json();
 
-    if (!respuesta.ok) {
-      // Decolecta responde 422 con {message: "ruc no valido"} cuando SUNAT
-      // no reconoce el RUC: eso sí es bloqueante (dato confirmado, no un
-      // problema de nuestro lado). 401/429/5xx son problemas del servicio
-      // (token vencido, cuota, caída), no bloquean.
+    if (!respuesta.ok || !cuerpo.success) {
+      // 401/429/5xx son problemas del servicio (token vencido, cuota,
+      // caída): no bloquean, se permite carga manual.
       return {
         disponible: false,
-        motivo: datos.message ?? datos.error ?? "El servicio de SUNAT no respondió correctamente.",
-        bloqueante: respuesta.status === 422,
+        motivo: cuerpo.message ?? "El servicio de validación de RUC no respondió correctamente.",
+        bloqueante: false,
       };
     }
 
-    const razonSocial: string | undefined = datos.razon_social;
-    const estado: string = (datos.estado ?? "").toString().toUpperCase();
-    const condicion: string = (datos.condicion ?? "").toString().toUpperCase();
+    // ConsultasPeru responde data: [] (array vacío) cuando SUNAT no
+    // reconoce el RUC: eso sí es un dato confirmado, es bloqueante.
+    if (Array.isArray(cuerpo.data) || !cuerpo.data) {
+      return { disponible: false, motivo: "No se encontró información para este RUC.", bloqueante: true };
+    }
+
+    const datosRuc = cuerpo.data;
+    const razonSocial = datosRuc.name;
+    const estado = (datosRuc.status ?? "").toString().toUpperCase();
+    const condicion = (datosRuc.domicile_conditions ?? "").toString().toUpperCase();
 
     if (!razonSocial) {
       return { disponible: false, motivo: "No se encontró información para este RUC.", bloqueante: false };
     }
 
-    const presenciaEnTrujillo = tienePresenciaEnTrujillo(datos);
+    const datosUbicacion: DatosUbicacionSunat = {
+      direccion: datosRuc.address,
+      distrito: datosRuc.district,
+      provincia: datosRuc.province,
+      departamento: datosRuc.department,
+      locales_anexos: await obtenerAnexosTrujillo(ruc, token),
+    };
+
+    const presenciaEnTrujillo = tienePresenciaEnTrujillo(datosUbicacion);
 
     return {
       disponible: true,
@@ -149,13 +215,13 @@ export async function consultarRuc(ruc: string): Promise<ResultadoConsultaRuc> {
       estado,
       condicion,
       tienePresenciaEnTrujillo: presenciaEnTrujillo,
-      direccionesTrujillo: direccionesEnTrujillo(datos),
+      direccionesTrujillo: direccionesEnTrujillo(datosUbicacion),
       esValidoParaTramite: estado === "ACTIVO" && condicion === "HABIDO" && presenciaEnTrujillo,
     };
   } catch {
     return {
       disponible: false,
-      motivo: "No se pudo conectar con el servicio de SUNAT. Intenta de nuevo o ingresa los datos manualmente.",
+      motivo: "No se pudo conectar con el servicio de validación de RUC. Intenta de nuevo o ingresa los datos manualmente.",
       bloqueante: false,
     };
   }
