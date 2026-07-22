@@ -47,6 +47,16 @@ export const ESTADOS_QUE_PERMITEN_EDITAR_DOCUMENTOS: EstadoExpediente[] = [
 // documento antes de pagar).
 export const ESTADOS_QUE_PERMITEN_PAGAR: EstadoExpediente[] = ["DOCUMENTOS_COMPLETOS", "PAGO_PENDIENTE"];
 
+// Estados en los que el domicilio (paso B) todavía se puede corregir por si
+// el negocio se equivocó (distrito, giro, representante, contacto, etc.).
+// Se corta en PAGO_APROBADO porque de ahí en adelante el distrito ya se usa
+// para programar la inspección y no debe cambiar por debajo.
+export const ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO: EstadoExpediente[] = [
+  "BORRADOR",
+  "DOCUMENTOS_COMPLETOS",
+  "PAGO_PENDIENTE",
+];
+
 export const ETIQUETAS_ESTADO_EXPEDIENTE: Record<EstadoExpediente, string> = {
   BORRADOR: "Borrador",
   DOCUMENTOS_COMPLETOS: "Documentos completos",

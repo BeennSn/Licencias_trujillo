@@ -12,6 +12,8 @@ import { StepIndicator } from "@/components/wizard/StepIndicator";
 import { encontrarDistritoTrujillo } from "@/lib/distritosTrujillo";
 import { GIROS_ACTIVIDAD, GIRO_OTRO } from "@/lib/girosActividad";
 import { pasoPorDefecto } from "@/lib/wizardPasos";
+import { ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO } from "@/lib/estadosExpediente";
+import type { EstadoExpediente } from "@/lib/estadosExpediente";
 
 type DireccionSugerida = { distrito: string; direccion: string };
 
@@ -29,7 +31,10 @@ export default function PasoDomicilio() {
     nombreComercial: string;
     representanteLegalNombre: string;
     representanteLegalDni: string;
+    emailContacto: string;
+    telefonoContacto: string;
     siguientePaso: string;
+    editable: boolean;
   } | null>(null);
 
   // Sin ninguna dirección de SUNAT no hay nada que ofrecer: ya no se acepta
@@ -59,12 +64,17 @@ export default function PasoDomicilio() {
     fetch(`/api/solicitudes/${expedienteId}`)
       .then((r) => r.json())
       .then((datos) => {
-        // El domicilio solo se guarda UNA VEZ: apenas el expediente ya
-        // tiene distrito guardado, se muestra fijo (sin importar en qué
-        // estado esté el expediente — el negocio podría volver atrás en
-        // el wizard antes de subir documentos y aun así no debe poder
-        // editar lo que ya guardó).
+        // Las sugerencias de SUNAT se cargan siempre (incluso si el
+        // domicilio ya está guardado), para poder volver a elegir una
+        // dirección distinta al corregir un error.
+        const lista: DireccionSugerida[] = datos.negocio?.direccionesTrujillo ?? [];
+        setSugerencias(lista);
+
         if (datos.expediente?.distrito) {
+          // El domicilio queda fijo apenas se guarda, pero sigue siendo
+          // editable mientras el expediente no haya pasado el pago (ver
+          // ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO) — así se puede corregir
+          // un error sin tener que iniciar un trámite nuevo.
           setDomicilioBloqueado({
             distrito: datos.expediente.distrito ?? "",
             direccionLocal: datos.expediente.direccionLocal ?? "",
@@ -72,14 +82,17 @@ export default function PasoDomicilio() {
             nombreComercial: datos.expediente.nombreComercial ?? "",
             representanteLegalNombre: datos.expediente.representanteLegalNombre ?? "",
             representanteLegalDni: datos.expediente.representanteLegalDni ?? "",
+            emailContacto: datos.expediente.emailContacto ?? "",
+            telefonoContacto: datos.expediente.telefonoContacto ?? "",
             siguientePaso: pasoPorDefecto(datos.expediente),
+            editable: ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO.includes(
+              datos.expediente.estado as EstadoExpediente
+            ),
           });
           setCargandoInicial(false);
           return;
         }
 
-        const lista: DireccionSugerida[] = datos.negocio?.direccionesTrujillo ?? [];
-        setSugerencias(lista);
         if (lista.length === 0) setSinDireccionesSunat(true);
         setCargandoInicial(false);
 
@@ -100,6 +113,36 @@ export default function PasoDomicilio() {
         }
       });
   }, [expedienteId]);
+
+  // Pasa del resumen fijo al formulario editable, precargado con lo que ya
+  // se había guardado, para corregir un error sin perder los demás datos.
+  function iniciarEdicion() {
+    if (!domicilioBloqueado) return;
+
+    setDistrito(domicilioBloqueado.distrito);
+    setDireccionLocal(domicilioBloqueado.direccionLocal);
+    setNombreComercial(domicilioBloqueado.nombreComercial);
+    setRepresentanteLegalNombre(domicilioBloqueado.representanteLegalNombre);
+    setRepresentanteLegalDni(domicilioBloqueado.representanteLegalDni);
+    setRepresentanteAutocompletado(false);
+    setEmailContacto(domicilioBloqueado.emailContacto);
+    setTelefonoContacto(domicilioBloqueado.telefonoContacto);
+
+    if ((GIROS_ACTIVIDAD as readonly string[]).includes(domicilioBloqueado.giroActividad)) {
+      setGiroSeleccionado(domicilioBloqueado.giroActividad);
+      setGiroOtro("");
+    } else {
+      setGiroSeleccionado(GIRO_OTRO);
+      setGiroOtro(domicilioBloqueado.giroActividad);
+    }
+
+    const indiceCoincidente = sugerencias.findIndex(
+      (s) => s.distrito === domicilioBloqueado.distrito && s.direccion === domicilioBloqueado.direccionLocal
+    );
+    setDireccionElegida(indiceCoincidente >= 0 ? indiceCoincidente : -1);
+
+    setDomicilioBloqueado(null);
+  }
 
   function elegirSugerencia(indice: number) {
     const sugerencia = sugerencias[indice];
@@ -183,7 +226,9 @@ export default function PasoDomicilio() {
             <div className="space-y-4">
               <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-1 text-sm">
                 <p className="text-xs text-gray-500 mb-2">
-                  Este paso ya quedó completado y no se puede modificar.
+                  {domicilioBloqueado.editable
+                    ? "Estos son los datos que guardaste. Puedes corregirlos si hubo un error."
+                    : "Este paso ya quedó completado y no se puede modificar."}
                 </p>
                 <p><span className="font-medium">Distrito:</span> {domicilioBloqueado.distrito}</p>
                 <p><span className="font-medium">Dirección:</span> {domicilioBloqueado.direccionLocal}</p>
@@ -197,6 +242,15 @@ export default function PasoDomicilio() {
               >
                 Continuar
               </Button>
+              {domicilioBloqueado.editable && (
+                <button
+                  type="button"
+                  onClick={iniciarEdicion}
+                  className="w-full text-center text-sm text-blue-700 hover:underline"
+                >
+                  Editar estos datos
+                </button>
+              )}
             </div>
           ) : sinDireccionesSunat ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">

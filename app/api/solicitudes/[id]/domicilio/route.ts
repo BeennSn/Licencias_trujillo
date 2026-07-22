@@ -3,18 +3,17 @@ import { and, eq, ne, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { expedientes } from "@/lib/db/schema";
 import { esquemaDomicilio } from "@/lib/validaciones";
+import { ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO } from "@/lib/estadosExpediente";
 
 // Paso B del wizard: domicilio fiscal/local (restringido a distritos de
 // Trujillo), giro de negocio y datos de contacto. No cambia el estado del
 // expediente todavía: eso ocurre recién cuando los documentos quedan completos.
 //
-// El distrito/dirección solo se puede guardar UNA VEZ: apenas quedan
-// escritos en el expediente (distrito deja de ser null), cualquier intento
-// posterior de PATCH se rechaza. Importante: esto NO depende del estado
-// del expediente (que solo cambia al subir documentos), porque el negocio
-// podría volver atrás en el wizard antes de subir nada y editar el
-// domicilio que ya había guardado — el dato guardado es la fuente de
-// verdad de "¿ya se pasó este paso?", no la máquina de estados.
+// El domicilio se puede corregir (re-PATCH) mientras el expediente siga en
+// un estado anterior al pago aprobado (ver ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO
+// en lib/estadosExpediente.ts) — permite arreglar un error de tipeo sin tener
+// que iniciar un trámite nuevo. A partir de PAGO_APROBADO queda bloqueado
+// porque el distrito ya se usó para programar la inspección.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cuerpo = await request.json();
@@ -29,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Expediente no encontrado." }, { status: 404 });
   }
 
-  if (expediente.distrito) {
+  if (expediente.distrito && !ESTADOS_QUE_PERMITEN_EDITAR_DOMICILIO.includes(expediente.estado)) {
     return NextResponse.json(
       { error: "El domicilio ya no se puede modificar: este paso quedó completado." },
       { status: 409 }
